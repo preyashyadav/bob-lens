@@ -1,197 +1,359 @@
-# 🔍 Bob Lens
+# Bob Lens 🔍
 
-Local developer tool that connects to IBM Bob IDE via MCP and visualizes AI-generated code changes before the engineer approves them.
+**A live behavioral visualizer for IBM Bob — see what AI changed, understand it, test it, approve it.**
+
+![Built for IBM Bob Hackathon 2026](https://img.shields.io/badge/IBM%20Bob%20Hackathon-2026-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+
+---
+
+## The Problem
+
+Engineers using AI coding assistants face a critical challenge:
+
+- **They approve changes they don't fully understand** — AI makes the code, but what does it actually *do* differently?
+- **Code diffs show what lines changed — not what the application does differently** — A `+` or `-` doesn't explain behavioral impact
+
+### The Landscape of Existing Tools
+
+Several tools address parts of this problem — **CodeSee** visualizes codebase architecture and PR impact, **Noodles** generates visual AST diffs of AI-generated code, **Greptile** and **Graphite** offer AI-powered PR review with codebase context, and **CodeVisualizer** generates function flowcharts. These are genuinely useful.
+
+### What Makes Bob Lens Different
+
+Bob Lens is not a PR review tool or a static visualizer. It operates at a different moment in the workflow — **between AI agent action and developer approval, before any commit exists**. Specifically:
+
+1. **It integrates directly with IBM Bob's checkpoint system** — reading before/after states that only exist inside Bob's shadow Git repo
+2. **It uses BobShell to have Bob explain its own changes** — the AI that made the change is the AI explaining it
+3. **It runs live test execution through the changed code before approval** — not static analysis, actual execution
+4. **It triggers automatically via MCP when Bob writes files** — no manual step required
+
+The combination of these four things — native checkpoint integration, self-explaining AI, live sandbox execution, and automatic MCP triggering — is what existing tools don't do together.
+
+---
+
+## What Bob Lens Does
+
+Bob Lens provides a complete workflow for understanding and validating AI-generated code changes:
+
+### The Full User Journey
+
+1. **Bob makes changes** → Bob Lens detects them automatically via MCP integration
+2. **Shows before/after code** → Per-file tabbed layout with syntax highlighting
+3. **👁 Eye button triggers BobShell analysis** → Bob explains its own changes programmatically
+4. **Visual flow diagram** → See execution path before and after, side-by-side
+5. **Live test runner** → Type HTTP inputs, watch request animate through each layer
+6. **Approve or Rollback** → One-click decision with full context
+
+### Key Features
+
+- **Automatic Change Detection**: Bob calls Bob Lens via MCP when files change
+- **Before/After Code View**: Tabbed interface showing original vs. modified code with unified diffs
+- **AI-Powered Analysis**: BobShell explains behavioral changes in plain English
+- **Visual Flow Diagrams**: See how data flows through your application before and after changes
+- **Live Test Execution**: Run HTTP requests through changed backend code and watch each layer execute
+- **Risk Assessment**: Bob evaluates changes as "safe", "review", or "risky"
+- **One-Click Actions**: Approve or rollback changes instantly
+
+### Screenshots
+
+![Bob Lens UI](docs/screenshots/Screenshot%202026-05-16%20at%208.03.54%20AM.png)
+
+*Bob Lens showing before/after code comparison with file tabs and analysis panel*
+
+---
+
+## Why IBM Bob Is Central
+
+Bob Lens is **built exclusively for IBM Bob** and leverages Bob's unique capabilities:
+
+| Bob Feature | How Bob Lens Uses It |
+|-------------|---------------------|
+| **MCP Support** | Bob calls Bob Lens automatically — no manual integration needed |
+| **Checkpoints** | Provides the "before" state of every changed file via git refs |
+| **BobShell** | Powers the 👁 analysis — Bob explains its own changes programmatically |
+| **Task Sessions** | Groups related file changes together automatically |
+
+**None of this works without Bob.** Claude Code and Codex have no equivalent MCP integration, checkpoint system, or programmatic self-analysis capability.
+
+---
 
 ## Architecture
 
-Bob Lens consists of three services running locally:
-
-1. **MCP Server** (STDIO) - Connects to Bob IDE, exposes tools, manages WebSocket
-2. **React UI** (port 3333) - Visualizes changes with before/after views
-3. **Sandbox Runner** (port 3334) - Executes code in isolated environment
-
-```mermaid
-graph LR
-    A[IBM Bob IDE] -->|STDIO/MCP| B[MCP Server]
-    B -->|WebSocket| C[React UI :3333]
-    B -->|HTTP| D[Sandbox :3334]
-    C -->|HTTP| D
+```
+IBM Bob IDE
+    │ MCP tool calls (notify_change, ask_bob, run_test)
+    ▼
+Bob Lens MCP Server (STDIO)
+    │ WebSocket broadcast (port 8081)
+    ▼
+Bob Lens UI (port 3333)
+    │ HTTP requests
+    ▼
+Sandbox Runner (port 3334)
+    │ child_process.spawn
+    ▼
+BobShell → Bob AI Analysis
 ```
 
-## Quick Start
+### Component Breakdown
+
+- **MCP Server**: Receives change notifications from Bob, tracks file states, runs BobShell analysis
+- **UI**: React app displaying before/after code, flow diagrams, and test results
+- **Sandbox**: Isolated execution environment for running changed code safely
+- **BobShell**: IBM Bob's CLI for programmatic AI analysis
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- IBM Bob IDE installed
-- Git (for checkpoint references)
+- **IBM Bob IDE** installed and logged in ([bob.ibm.com](https://bob.ibm.com))
+- **BobShell** installed (`bob --version` should work)
+- **Node.js 18+**
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone <repo-url>
+cd bob-lens
+
 # Install all dependencies
 npm run install:all
 
-# Build all services
-npm run build:all
-```
-
-### Configuration
-
-1. Copy environment files:
-```bash
+# Configure MCP server
 cp mcp-server/.env.example mcp-server/.env
-cp ui/.env.example ui/.env
-cp sandbox/.env.example sandbox/.env
+# Edit mcp-server/.env and add your BOB_PATH (run: which bob)
 ```
 
-2. Register MCP server with Bob IDE:
-```bash
-# The .bob/mcp.json file is already configured
-# Bob will automatically detect it in this directory
-```
+### Attach to Any Project
 
-### Running
+Bob Lens can visualize changes in any project. Here's how:
+
+#### Option 1: Start Bob Lens Pointing at Your Project
 
 ```bash
-# Start all services in development mode
-npm run dev
-
-# Or start individually:
-npm run dev:mcp      # MCP Server
-npm run dev:ui       # React UI (opens at http://localhost:3333)
-npm run dev:sandbox  # Sandbox Runner
+# Start Bob Lens with your project path
+WORKSPACE_PATH=/path/to/your/project npm run dev
 ```
 
-## MCP Tools
+This starts:
+- MCP Server on STDIO (for Bob communication)
+- UI on http://localhost:3333
+- Sandbox on http://localhost:3334
 
-Bob Lens exposes three tools to IBM Bob IDE:
+#### Option 2: Add to Your Project's MCP Config
 
-### 1. `notify_change`
-Called by Bob after every file write to notify Bob Lens of changes.
+Add Bob Lens to your project's `.bob/mcp.json`:
 
-```typescript
+```json
 {
-  changedFiles: string[];      // Array of file paths
-  checkpointRef: string;       // Git ref or checkpoint ID
-  changeDescription?: string;  // Optional summary
-}
-```
-
-### 2. `ask_bob`
-Called by Bob Lens to request behavioral analysis from Bob.
-
-```typescript
-{
-  question: string;            // Question for Bob
-  context: {
-    files: string[];           // Relevant files
-    changes: object;           // Change details
+  "mcpServers": {
+    "bob-lens": {
+      "command": "node",
+      "args": ["/path/to/bob-lens/mcp-server/dist/index.js"],
+      "env": {
+        "WORKSPACE_PATH": "/path/to/your/project"
+      }
+    }
   }
 }
 ```
 
-### 3. `run_test`
-Triggered when engineer clicks "Run Test" in the UI.
+Then restart Bob IDE to load the MCP server.
 
-```typescript
-{
-  testInputs: object;          // User-provided test data
-  targetFiles: string[];       // Files to test
-  checkpointRef: string;       // Version to test
-}
-```
+---
 
-## Workflow
+## How to Use
 
-1. **Bob makes changes** → Calls `notify_change` via MCP
-2. **MCP Server** → Broadcasts to UI via WebSocket
-3. **UI opens automatically** → Shows before/after diffs
-4. **Engineer reviews** → Sees code changes and flow diagrams
-5. **Engineer clicks "Run Test"** → Enters test inputs
-6. **Sandbox executes** → Returns screenshots + results
-7. **UI displays** → Rendered preview and output
-8. **Engineer approves/rejects** → Feedback to Bob
+### Step-by-Step Workflow
+
+1. **Start Bob Lens**
+   ```bash
+   npm run dev
+   ```
+
+2. **Open the UI**
+   - Navigate to http://localhost:3333
+   - You'll see "Waiting for Bob" initially
+
+3. **Ask IBM Bob to Make Changes**
+   - In Bob IDE, ask Bob to modify your project
+   - Example: "Add error handling to the user controller"
+
+4. **Bob Lens Detects Changes Automatically**
+   - Changes appear in tabs (one per file)
+   - Each tab shows before/after code and diff
+
+5. **Review Before/After Code**
+   - Click tabs to switch between changed files
+   - See color-coded diffs (green = added, red = removed)
+
+6. **Click 👁 to Trigger Bob's Analysis**
+   - Wait ~30 seconds for BobShell to analyze
+   - See visual flow diagram of what changed
+   - Read Bob's explanation and risk assessment
+
+7. **Switch to Backend Tab and Click "Run Test"**
+   - Enter HTTP method, endpoint, headers, and body
+   - Watch execution animate through each layer:
+     - Input validation
+     - Middleware
+     - Controller
+     - Database operations
+     - Response
+
+8. **Make Your Decision**
+   - Click **✓ Approve** to accept changes
+   - Click **↩ Rollback** to revert changes
+
+---
+
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **MCP Server** | Node.js + @modelcontextprotocol/sdk | Connects Bob IDE to Bob Lens |
+| **UI** | React + Vite | Displays changes and analysis |
+| **Analysis** | BobShell (IBM Bob CLI) | AI-powered behavioral analysis |
+| **Diff** | diff npm package | Generates unified diffs |
+| **Sandbox** | Node.js + isolated-vm | Safe code execution environment |
+| **Screenshots** | Puppeteer | Visual regression testing |
+| **Styling** | Pure CSS with VS Code design tokens | Native IDE look and feel |
+
+---
+
+## Hackathon Submission Notes
+
+**Built for IBM Bob Hackathon May 2026**
+
+**Theme**: Turn idea into impact faster
+
+### What Makes This Special
+
+1. **Bob-Native Integration**: Uses MCP, checkpoints, and BobShell — features unique to IBM Bob
+2. **Behavioral Focus**: Shows *what changed* in behavior, not just code
+3. **Live Testing**: Execute changed code without deploying
+4. **AI Self-Analysis**: Bob explains its own changes using BobShell
+5. **Production-Ready**: Works with any existing codebase, no setup required
+
+### Session Reports
+
+All Bob development sessions are documented in `bob_sessions/` folder, showing the iterative development process with IBM Bob.
+
+---
 
 ## Project Structure
 
 ```
 bob-lens/
-├── .bob/mcp.json           # MCP server registration
-├── types/                  # Shared TypeScript types
-├── mcp-server/            # MCP server (STDIO transport)
+├── mcp-server/          # MCP server for Bob IDE integration
 │   ├── src/
-│   │   ├── index.ts       # Entry point
-│   │   ├── server.ts      # MCP setup
-│   │   ├── tools/         # MCP tool implementations
-│   │   └── services/      # WebSocket, change tracking
-│   └── package.json
-├── ui/                    # React + Vite UI
+│   │   ├── index.ts     # Entry point
+│   │   ├── server.ts    # MCP tool handlers
+│   │   ├── services/
+│   │   │   ├── change-tracker.ts    # Tracks file changes
+│   │   │   ├── bobshell-runner.ts   # Runs Bob analysis
+│   │   │   └── websocket.ts         # UI communication
+│   │   └── tools/
+│   │       ├── notify-change.ts     # MCP tool: notify_change
+│   │       ├── ask-bob.ts           # MCP tool: ask_bob
+│   │       └── run-test.ts          # MCP tool: run_test
+├── ui/                  # React visualization UI
 │   ├── src/
-│   │   ├── App.tsx        # Root component
-│   │   ├── components/    # UI components
-│   │   ├── hooks/         # React hooks
-│   │   └── services/      # WebSocket client
-│   └── package.json
-└── sandbox/               # Sandbox runner
-    ├── src/
-    │   ├── index.ts       # Express server
-    │   ├── routes/        # API endpoints
-    │   └── services/      # VM execution, screenshots
-    └── package.json
+│   │   ├── App.tsx
+│   │   ├── components/
+│   │   │   ├── ChangeViewer.tsx     # Before/after code view
+│   │   │   ├── AnalysisPanel.tsx    # Bob's analysis display
+│   │   │   ├── FlowDiagram.tsx      # Visual flow graph
+│   │   │   └── TestRunner.tsx       # Live test execution
+│   │   └── hooks/
+│   │       └── useWebSocket.ts      # Real-time updates
+├── sandbox/             # Isolated code execution
+│   ├── src/
+│   │   ├── services/
+│   │   │   ├── request-runner.ts    # HTTP request simulator
+│   │   │   ├── vm-runner.ts         # VM isolation
+│   │   │   └── screenshot.ts        # Visual testing
+├── types/               # Shared TypeScript types
+└── docs/
+    └── screenshots/     # UI screenshots
 ```
+
+---
 
 ## Development
 
-### Adding New Features
-
-1. **New MCP Tool**: Add to `mcp-server/src/tools/`
-2. **New UI Component**: Add to `ui/src/components/`
-3. **New Sandbox Feature**: Add to `sandbox/src/services/`
-
-### Type Safety
-
-Shared types are in `types/` directory:
-- `mcp.ts` - MCP tool interfaces
-- `change.ts` - Code change types
-- `sandbox.ts` - Execution types
-
-### Testing
+### Running Individual Components
 
 ```bash
-# Type checking
-npm run type-check --workspace=mcp-server
-npm run type-check --workspace=ui
-npm run type-check --workspace=sandbox
+# MCP Server only
+npm run dev:mcp
+
+# UI only
+npm run dev:ui
+
+# Sandbox only
+npm run dev:sandbox
+
+# All together (recommended)
+npm run dev
 ```
 
-## Troubleshooting
+### Building for Production
 
-### UI doesn't open automatically
-- Check if port 3333 is available
-- Verify WebSocket connection at ws://localhost:8080
+```bash
+npm run build:all
+```
 
-### Sandbox execution fails
-- Check if port 3334 is available
-- Verify isolated-vm and puppeteer are installed
-- Check sandbox logs for errors
-- Note: isolated-vm requires native compilation (node-gyp)
+### Environment Variables
 
-### MCP server not connecting
-- Verify `.bob/mcp.json` is in project root
-- Check Bob IDE MCP settings
-- Restart Bob IDE after changes
+**mcp-server/.env**:
+```env
+BOB_PATH=/path/to/bob
+WORKSPACE_PATH=/path/to/your/project
+```
 
-## Tech Stack
+**ui/.env**:
+```env
+VITE_WS_URL=ws://localhost:8081
+VITE_SANDBOX_URL=http://localhost:3334
+```
 
-- **MCP Server**: Node.js, TypeScript, @modelcontextprotocol/sdk, ws
-- **UI**: React 18, Vite, TypeScript, WebSocket API
-- **Sandbox**: Node.js, Express, isolated-vm, Puppeteer
+**sandbox/.env**:
+```env
+PORT=3334
+```
+
+---
+
+## Contributing
+
+This project was built for the IBM Bob Hackathon 2026. Contributions are welcome!
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+---
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details
 
-## Support
+---
 
-For issues and questions, please open an issue on GitHub.
+## Acknowledgments
+
+- **IBM Bob Team** for creating an AI coding assistant with MCP support and BobShell
+- **Model Context Protocol** for enabling seamless IDE integration
+- **React Flow** for the visual flow diagram library
+
+---
+
+**Made with Bob** 🤖
+
+*Turn idea into impact faster.*
