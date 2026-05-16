@@ -198,9 +198,8 @@ notify_change({
   console.log('● MCP Server    → started by IBM Bob IDE automatically\n');
   console.log(`Open http://localhost:${uiPort} in your browser.`);
   console.log('Make changes with IBM Bob IDE to see them visualized.\n');
-  console.log('Press Ctrl+C to stop.
-
-Built by Preyash Yadav → www.preyashyadav.com\n');
+  console.log('Press Ctrl+C to stop.\n');
+  console.log('Built by Preyash Yadav → www.preyashyadav.com\n');
 
   processes.forEach(({ name, cmd, args, env }) => {
     const proc = spawn(cmd, args, { env, stdio: 'inherit' });
