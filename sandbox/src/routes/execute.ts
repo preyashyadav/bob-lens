@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { runInVM } from '../services/vm-runner.js';
-import { captureScreenshot } from '../services/screenshot.js';
+import { captureScreenshot, renderComponentScreenshots } from '../services/screenshot.js';
 import { runRequest, RunRequestInput } from '../services/request-runner.js';
 
 interface ExecutionRequest {
@@ -107,5 +107,31 @@ export async function executeBackendRoute(req: Request, res: Response): Promise<
       })}\n\n`);
       res.end();
     }
+  }
+}
+
+export async function screenshotRoute(req: Request, res: Response): Promise<void> {
+  try {
+    const { beforeCode, afterCode, componentName } = req.body ?? {};
+
+    if (!beforeCode || !afterCode) {
+      res.status(400).json({ success: false, error: 'Missing required fields' });
+      return;
+    }
+
+    const result = await renderComponentScreenshots(
+      beforeCode || '',
+      afterCode || '',
+      componentName || 'Component'
+    );
+
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error?.message || 'Internal error',
+      before: '',
+      after: '',
+    });
   }
 }

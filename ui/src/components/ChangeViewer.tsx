@@ -10,6 +10,13 @@ interface ChangeViewerProps {
   onTabChange: (index: number) => void;
 }
 
+interface ScreenshotState {
+  loading: boolean;
+  before: string;
+  after: string;
+  error?: string;
+}
+
 // Helper function to find character-level differences between two strings
 function getCharDiffs(oldStr: string, newStr: string): { oldHighlights: boolean[], newHighlights: boolean[] } {
   const oldHighlights: boolean[] = new Array(oldStr.length).fill(false);
@@ -81,6 +88,8 @@ function renderWithHighlights(text: string, highlights: boolean[], bgColor: stri
 
 function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTabChange }: ChangeViewerProps) {
   const [analysisChangeId, setAnalysisChangeId] = useState<string | null>(null);
+  const [screenshots, setScreenshots] = useState<ScreenshotState | null>(null);
+  const [showScreenshots, setShowScreenshots] = useState(false);
 
   if (!changeSets || changeSets.length === 0) {
     return (
@@ -100,6 +109,13 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
   const getFileName = (filePath: string): string => {
     const parts = filePath.split('/');
     return parts[parts.length - 1];
+  };
+
+  // Helper function to extract component name from filename
+  const getComponentName = (filePath: string): string => {
+    const filename = getFileName(filePath);
+    // Remove extension (.jsx, .tsx, .js, .ts)
+    return filename.replace(/\.(jsx?|tsx?)$/, '');
   };
 
   // Helper function to calculate change indicator color
@@ -134,6 +150,52 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
         return '[C]';
       default:
         return '[?]';
+    }
+  };
+
+  // Function to fetch component screenshots
+  const fetchScreenshots = async () => {
+    setScreenshots({ loading: true, before: '', after: '' });
+    setShowScreenshots(true);
+
+    try {
+      const componentName = getComponentName(activeFile.filePath);
+      const response = await fetch('http://localhost:3334/screenshot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          beforeCode: activeFile.before,
+          afterCode: activeFile.after,
+          componentName,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.before && result.after) {
+        setScreenshots({
+          loading: false,
+          before: result.before,
+          after: result.after,
+          error: result.error,
+        });
+      } else {
+        setScreenshots({
+          loading: false,
+          before: '',
+          after: '',
+          error: result.error || 'Failed to generate screenshots',
+        });
+      }
+    } catch (error: any) {
+      setScreenshots({
+        loading: false,
+        before: '',
+        after: '',
+        error: error.message || 'Failed to connect to sandbox server',
+      });
     }
   };
 
@@ -343,6 +405,141 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
     );
   };
 
+  const renderScreenshotComparison = () => {
+    if (!screenshots) return null;
+
+    if (screenshots.loading) {
+      return (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '400px',
+          fontFamily: 'var(--font-ui)',
+          color: 'var(--text-secondary)'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</div>
+            <div>Rendering component screenshots...</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (screenshots.error || !screenshots.before || !screenshots.after) {
+      return (
+        <div style={{
+          padding: '24px',
+          fontFamily: 'var(--font-ui)',
+          color: 'var(--text-secondary)',
+          textAlign: 'center'
+        }}>
+          <div style={{ color: 'var(--error)', marginBottom: '8px' }}>
+            ⚠️ Screenshot rendering failed
+          </div>
+          <div style={{ fontSize: '12px' }}>
+            {screenshots.error || 'Unable to render component'}
+          </div>
+          <button
+            onClick={() => setShowScreenshots(false)}
+            style={{
+              marginTop: '16px',
+              padding: '8px 16px',
+              background: 'var(--accent-blue)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius)',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            Show Code Diff
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ 
+        display: 'flex', 
+        height: '100%',
+        overflow: 'hidden'
+      }}>
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: 'var(--bg-primary)'
+        }}>
+          <div style={{ 
+            fontFamily: 'var(--font-ui)',
+            fontSize: '10px',
+            fontWeight: 600,
+            letterSpacing: '1px',
+            color: 'var(--text-secondary)',
+            padding: '12px',
+            textTransform: 'uppercase',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-secondary)'
+          }}>
+            BEFORE
+          </div>
+          <div style={{ 
+            flex: 1, 
+            overflow: 'auto',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center'
+          }}>
+            <img 
+              src={`data:image/png;base64,${screenshots.before}`} 
+              alt="Before screenshot"
+              style={{ maxWidth: '100%', border: '1px solid var(--border)' }}
+            />
+          </div>
+        </div>
+        <div style={{ width: '1px', background: 'var(--border)', flexShrink: 0 }} />
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          overflow: 'hidden',
+          background: 'var(--bg-primary)'
+        }}>
+          <div style={{ 
+            fontFamily: 'var(--font-ui)',
+            fontSize: '10px',
+            fontWeight: 600,
+            letterSpacing: '1px',
+            color: 'var(--text-secondary)',
+            padding: '12px',
+            textTransform: 'uppercase',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-secondary)'
+          }}>
+            AFTER
+          </div>
+          <div style={{ 
+            flex: 1, 
+            overflow: 'auto',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center'
+          }}>
+            <img 
+              src={`data:image/png;base64,${screenshots.after}`} 
+              alt="After screenshot"
+              style={{ maxWidth: '100%', border: '1px solid var(--border)' }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="change-viewer">
       {/* Top Section - Task Header */}
@@ -407,6 +604,32 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
             >
               👁
             </span>
+            {file.fileType === 'frontend' && (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fetchScreenshots();
+                }}
+                title="Preview UI Changes"
+                aria-label="Preview UI Changes"
+                style={{
+                  marginLeft: 8,
+                  background: 'transparent',
+                  border: '1px solid #3e3e42',
+                  color: '#cccccc',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  fontSize: 12,
+                  lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  userSelect: 'none',
+                }}
+              >
+                🖼️
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -414,49 +637,97 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
       {/* Bottom Section - Active Tab Content */}
       {activeFile && (
         <div className="tab-content">
-          <div style={{ 
-            display: 'flex', 
-            height: '60%',
-            borderBottom: '1px solid var(--border)',
-            overflow: 'hidden'
-          }}>
-            {renderCodePanel(
-              activeFile.before.split('\n'),
-              'BEFORE',
-              renderSideBySideDiff(activeFile.before, activeFile.after).removedLines,
-              true
-            )}
-            <div style={{ width: '1px', background: 'var(--border)', flexShrink: 0 }} />
-            {renderCodePanel(
-              activeFile.after.split('\n'),
-              'AFTER',
-              renderSideBySideDiff(activeFile.before, activeFile.after).addedLines,
-              false
-            )}
-          </div>
-          <div style={{ 
-            height: '40%',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            background: 'var(--bg-secondary)'
-          }}>
-            <div style={{ 
-              fontFamily: 'var(--font-ui)',
-              fontSize: '10px',
-              fontWeight: 600,
-              letterSpacing: '1px',
-              color: 'var(--text-secondary)',
-              padding: '12px',
-              textTransform: 'uppercase',
-              borderBottom: '1px solid var(--border)'
-            }}>
-              DIFF
-            </div>
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              {renderUnifiedDiff(activeFile.diff)}
-            </div>
-          </div>
+          {showScreenshots && activeFile.fileType === 'frontend' ? (
+            <>
+              <div style={{ 
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  padding: '8px 12px',
+                  background: 'var(--bg-secondary)',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ 
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)'
+                  }}>
+                    Component Preview
+                  </span>
+                  <button
+                    onClick={() => setShowScreenshots(false)}
+                    style={{
+                      padding: '4px 12px',
+                      background: 'transparent',
+                      color: 'var(--accent-blue)',
+                      border: '1px solid var(--accent-blue)',
+                      borderRadius: 'var(--radius)',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-ui)'
+                    }}
+                  >
+                    Show Code Diff
+                  </button>
+                </div>
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  {renderScreenshotComparison()}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ 
+                display: 'flex', 
+                height: '60%',
+                borderBottom: '1px solid var(--border)',
+                overflow: 'hidden'
+              }}>
+                {renderCodePanel(
+                  activeFile.before.split('\n'),
+                  'BEFORE',
+                  renderSideBySideDiff(activeFile.before, activeFile.after).removedLines,
+                  true
+                )}
+                <div style={{ width: '1px', background: 'var(--border)', flexShrink: 0 }} />
+                {renderCodePanel(
+                  activeFile.after.split('\n'),
+                  'AFTER',
+                  renderSideBySideDiff(activeFile.before, activeFile.after).addedLines,
+                  false
+                )}
+              </div>
+              <div style={{ 
+                height: '40%',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                background: 'var(--bg-secondary)'
+              }}>
+                <div style={{ 
+                  fontFamily: 'var(--font-ui)',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  letterSpacing: '1px',
+                  color: 'var(--text-secondary)',
+                  padding: '12px',
+                  textTransform: 'uppercase',
+                  borderBottom: '1px solid var(--border)'
+                }}>
+                  DIFF
+                </div>
+                <div style={{ flex: 1, overflow: 'auto' }}>
+                  {renderUnifiedDiff(activeFile.diff)}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
