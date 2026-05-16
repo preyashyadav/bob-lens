@@ -2,7 +2,10 @@
 
 > See what IBM Bob changed. Understand it. Approve it with confidence.
 
-[badges: IBM Bob Hackathon 2026 | Node >=18 | MIT License | Built by Preyash Yadav]
+![Built for IBM Bob Hackathon 2026](https://img.shields.io/badge/IBM%20Bob%20Hackathon-2026-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+
 
 ![Bob Lens UI](docs/screenshots/uichange-render.png)
 
