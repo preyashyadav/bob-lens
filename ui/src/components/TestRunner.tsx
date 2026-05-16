@@ -131,8 +131,8 @@ function TestRunner({ activeFile }: TestRunnerProps) {
       
       {/* Section 1: Test Input Form */}
       <div className="test-input-section">
-        <div className="form-row">
-          <label htmlFor="method">Method:</label>
+        <div className="form-row" style={{ gridColumn: '1 / 2' }}>
+          <label htmlFor="method">Method</label>
           <select
             id="method"
             value={method}
@@ -146,8 +146,8 @@ function TestRunner({ activeFile }: TestRunnerProps) {
           </select>
         </div>
 
-        <div className="form-row">
-          <label htmlFor="endpoint">Endpoint:</label>
+        <div className="form-row" style={{ gridColumn: '2 / 3' }}>
+          <label htmlFor="endpoint">Endpoint</label>
           <input
             id="endpoint"
             type="text"
@@ -158,8 +158,8 @@ function TestRunner({ activeFile }: TestRunnerProps) {
           />
         </div>
 
-        <div className="form-row">
-          <label htmlFor="headers">Headers (JSON):</label>
+        <div className="form-row" style={{ gridColumn: '1 / -1' }}>
+          <label htmlFor="headers">Headers (JSON)</label>
           <textarea
             id="headers"
             value={headersJson}
@@ -170,8 +170,8 @@ function TestRunner({ activeFile }: TestRunnerProps) {
           />
         </div>
 
-        <div className="form-row">
-          <label htmlFor="body">Body (JSON):</label>
+        <div className="form-row" style={{ gridColumn: '1 / -1' }}>
+          <label htmlFor="body">Body (JSON)</label>
           <textarea
             id="body"
             value={bodyJson}
@@ -183,8 +183,8 @@ function TestRunner({ activeFile }: TestRunnerProps) {
         </div>
 
         {activeFile && (
-          <div className="active-file-info">
-            <strong>Target File:</strong> {activeFile.filePath} [{activeFile.fileType}]
+          <div className="active-file-info" style={{ gridColumn: '1 / -1' }}>
+            <strong>Target File:</strong> {activeFile.filePath}
           </div>
         )}
 
@@ -192,6 +192,7 @@ function TestRunner({ activeFile }: TestRunnerProps) {
           onClick={handleRunTest}
           disabled={running}
           className="run-button"
+          style={{ gridColumn: '1 / -1' }}
         >
           {running ? 'Running...' : 'Run Test'}
         </button>

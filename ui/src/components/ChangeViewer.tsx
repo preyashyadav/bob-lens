@@ -14,8 +14,8 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
     return (
       <div className="change-viewer">
         <div className="empty-state">
-          <h2>No changes yet</h2>
-          <p>Waiting for Bob to make code changes...</p>
+          <h2>Waiting for Bob</h2>
+          <p>Make a change in Bob IDE to see it visualized here</p>
         </div>
       </div>
     );
@@ -121,7 +121,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
               className="change-indicator"
               style={{ backgroundColor: getChangeIndicator(file) }}
             />
-            <span className="file-name">{getFileName(file.filePath)}</span>
+            {getFileName(file.filePath)}
             <span className="file-type-badge">{getFileTypeBadge(file.fileType)}</span>
           </button>
         ))}
