@@ -6,6 +6,7 @@ import {
 import { notifyChangeHandler } from './tools/notify-change.js';
 import { askBobHandler } from './tools/ask-bob.js';
 import { runTestHandler } from './tools/run-test.js';
+import { analysisCache } from './services/websocket.js';
 
 export function setupMCPTools(server: Server): void {
   // Handle tools/list request
@@ -93,11 +94,40 @@ export function setupMCPTools(server: Server): void {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     
-    if (name === "notify_change") {
-      return await notifyChangeHandler(args as any);
+  if (name === "notify_change") {
+    const notifyResult = await notifyChangeHandler(args as any);
+    
+    // Auto-trigger Bob analysis after every change
+    const notifyData = JSON.parse(notifyResult.content[0].text);
+    if (notifyData.success && notifyData.changeId) {
+      // Don't await — run analysis in background
+      askBobHandler({
+        changes: (args as any).changes || [],
+        taskDescription: (args as any).changeDescription || 'Code change',
+        changeId: notifyData.changeId
+      } as any).then(result => {
+        const parsed = JSON.parse(result.content[0].text);
+        if (parsed.success && parsed.flowGraph) {
+          analysisCache.set(notifyData.changeId, parsed.flowGraph);
+          console.error(`Analysis cached for ${notifyData.changeId}`);
+        }
+      }).catch(err => {
+        console.error('Bob analysis failed:', err.message);
+      });
     }
+    
+    return notifyResult;
+  }
     if (name === "ask_bob") {
-      return await askBobHandler(args as any);
+      const result = await askBobHandler(args as any);
+      
+      // Store analysis in cache if successful
+      if (result.analysis && result.changeId) {
+        analysisCache.set(result.changeId, result.analysis);
+        console.error(`Cached analysis for changeId: ${result.changeId}`);
+      }
+      
+      return result;
     }
     if (name === "run_test") {
       return await runTestHandler(args as any);

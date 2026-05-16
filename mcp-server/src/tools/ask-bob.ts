@@ -1,31 +1,39 @@
+import { runBobAnalysis, BobAnalysis } from '../services/bobshell-runner.js';
+
 interface AskBobArgs {
-  question: string;
-  context: {
-    files: string[];
-    changes: Record<string, any>;
-  };
+  changes: Array<{
+    filePath: string;
+    fileType: string;
+    before: string;
+    after: string;
+  }>;
+  taskDescription: string;
+  changeId?: string;
 }
 
-export async function askBobHandler(args: AskBobArgs) {
+export async function askBobHandler(args: AskBobArgs): Promise<{ content: Array<{ type: string; text: string }>; analysis?: BobAnalysis; changeId?: string }> {
   try {
-    // TODO: Implement actual Bob Ask mode integration
-    // For now, return a placeholder response
-    const result = {
-      success: true,
-      answer: 'This is a placeholder response. Bob Ask mode integration pending.',
-      context: {
-        question: args.question,
-        files: args.context.files,
-      },
-    };
+    // Get workspace path from environment or use current directory
+    const workspacePath = process.env.WORKSPACE_PATH || process.cwd();
+
+    // Run Bob analysis
+    const analysis = await runBobAnalysis(args.changes, args.taskDescription, workspacePath);
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          changeId: args.changeId,
+          flowGraph: analysis.flowGraph,
+          summary: analysis.summary,
+          explanation: analysis.explanation,
+          risks: analysis.risks,
+          verdict: analysis.verdict
+        })
+      }],
+      analysis,
+      changeId: args.changeId
     };
   } catch (error: any) {
     return {
@@ -34,7 +42,7 @@ export async function askBobHandler(args: AskBobArgs) {
           type: 'text',
           text: JSON.stringify({
             success: false,
-            answer: `Failed to ask Bob: ${error.message}`,
+            error: `Failed to ask Bob: ${error.message}`,
           }, null, 2),
         },
       ],

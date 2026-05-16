@@ -1,7 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import * as http from 'http';
+import { BobAnalysis } from './bobshell-runner.js';
 
 let wss: WebSocketServer;
+
+// In-memory cache for analysis results
+export const analysisCache = new Map<string, BobAnalysis>();
 
 export async function startWebSocketServer(): Promise<void> {
   const port = process.env.WEBSOCKET_PORT || 8080;
@@ -36,6 +40,17 @@ export async function startWebSocketServer(): Promise<void> {
 
   // Start HTTP test server on port 8081
   const httpServer = http.createServer((req, res) => {
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+
     if (req.method === 'POST' && req.url === '/trigger') {
       let body = '';
       
@@ -43,10 +58,40 @@ export async function startWebSocketServer(): Promise<void> {
         body += chunk.toString();
       });
       
-      req.on('end', () => {
+      req.on('end', async () => {
         try {
           const data = JSON.parse(body);
+          
+          // Broadcast to UI
           broadcastToUI(data);
+          
+          // Auto-trigger Bob analysis if changes are present
+          if (data.data?.changes && data.data?.id) {
+            const changeId = data.data.id;
+            const changes = data.data.changes;
+            const taskDescription = data.data.description || 'Code change';
+            
+            // Import and call askBobHandler in background
+            import('../tools/ask-bob.js').then(({ askBobHandler }) => {
+              askBobHandler({
+                changes,
+                taskDescription,
+                changeId
+              } as any).then((result: any) => {
+                try {
+                  const parsed = JSON.parse(result.content[0].text);
+                  if (parsed.success && parsed.flowGraph) {
+                    analysisCache.set(changeId, parsed.flowGraph);
+                    console.error(`Bob analysis cached for changeId: ${changeId}`);
+                  }
+                } catch (e: any) {
+                  console.error('Failed to parse Bob analysis:', e.message);
+                }
+              }).catch((err: any) => {
+                console.error('Bob analysis error:', err.message);
+              });
+            });
+          }
           
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: true, message: 'Broadcast sent' }));
@@ -55,6 +100,25 @@ export async function startWebSocketServer(): Promise<void> {
           res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
         }
       });
+    } else if (req.method === 'GET' && req.url?.startsWith('/analysis/')) {
+      // Extract changeId from URL
+      const changeId = req.url.split('/analysis/')[1];
+      
+      if (!changeId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Missing changeId' }));
+        return;
+      }
+
+      const analysis = analysisCache.get(changeId);
+      
+      if (analysis) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, analysis }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: 'Analysis not found' }));
+      }
     } else {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
