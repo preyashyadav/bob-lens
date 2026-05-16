@@ -1,0 +1,1 @@
+{"version":3,"file":"run-test.d.ts","sourceRoot":"","sources":["../../src/tools/run-test.ts"],"names":[],"mappings":"AAIA,UAAU,WAAW;IACnB,UAAU,EAAE,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC,CAAC;IAChC,WAAW,EAAE,MAAM,EAAE,CAAC;IACtB,aAAa,EAAE,MAAM,CAAC;CACvB;AAED,wBAAsB,cAAc,CAAC,IAAI,EAAE,WAAW;;;;;GAsCrD"}

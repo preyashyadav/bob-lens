@@ -1,0 +1,1 @@
+{"version":3,"file":"ask-bob.d.ts","sourceRoot":"","sources":["../../src/tools/ask-bob.ts"],"names":[],"mappings":"AAAA,UAAU,UAAU;IAClB,QAAQ,EAAE,MAAM,CAAC;IACjB,OAAO,EAAE;QACP,KAAK,EAAE,MAAM,EAAE,CAAC;QAChB,OAAO,EAAE,MAAM,CAAC,MAAM,EAAE,GAAG,CAAC,CAAC;KAC9B,CAAC;CACH;AAED,wBAAsB,aAAa,CAAC,IAAI,EAAE,UAAU;;;;;GAkCnD"}

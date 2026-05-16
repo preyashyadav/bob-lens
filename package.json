@@ -13,7 +13,6 @@
     "types"
   ],
   "scripts": {
-    "prepare": "npm run build:all",
     "install:all": "npm install && npm install --workspace=mcp-server && npm install --workspace=ui && npm install --workspace=sandbox",
     "dev:mcp": "npm run dev --workspace=mcp-server",
     "dev:ui": "npm run dev --workspace=ui",

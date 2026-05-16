@@ -1,0 +1,1 @@
+{"version":3,"file":"notify-change.d.ts","sourceRoot":"","sources":["../../src/tools/notify-change.ts"],"names":[],"mappings":"AAGA,UAAU,gBAAgB;IACxB,YAAY,EAAE,MAAM,EAAE,CAAC;IACvB,aAAa,EAAE,MAAM,CAAC;IACtB,iBAAiB,CAAC,EAAE,MAAM,CAAC;CAC5B;AAED,wBAAsB,mBAAmB,CAAC,IAAI,EAAE,gBAAgB;;;;;GA+C/D"}
