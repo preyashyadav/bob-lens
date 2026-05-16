@@ -11,3 +11,5 @@ coverage/
 .turbo/
 
 # Made with Bob
+.bob/mcp.json
+.bob/mcp.json
