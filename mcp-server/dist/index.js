@@ -17,7 +17,14 @@ async function main() {
     // Setup MCP tools
     setupMCPTools(server);
     // Start WebSocket server for UI communication
-    await startWebSocketServer(server);
+    if (process.env.WEBSOCKET_ONLY === 'true') {
+        await startWebSocketServer(server);
+        console.error('Bob Lens WebSocket bridge running on port 8080');
+        return;
+    }
+    else {
+        await startWebSocketServer(server);
+    }
     // Only one transport can be connected at a time. Default behavior:
     // - If we're spawned by a client (stdin is not a TTY), use STDIO.
     // - If we're run interactively, expose the SSE endpoint at http://localhost:8081/mcp.

@@ -120,6 +120,24 @@ export async function startWebSocketServer(mcpServer) {
                 }
             });
         }
+        else if (req.method === 'POST' && req.url === '/internal-broadcast') {
+            let body = '';
+            req.on('data', (chunk) => {
+                body += chunk.toString();
+            });
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    broadcastToUI({ ...data, __bobLensInternalBroadcast: true });
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, message: 'Broadcast forwarded' }));
+                }
+                catch {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
+                }
+            });
+        }
         else if (req.method === 'GET' && req.url?.startsWith('/analysis/')) {
             // Extract changeId from URL
             const changeId = req.url.split('/analysis/')[1];
@@ -161,11 +179,25 @@ function handleUIMessage(ws, data) {
 export function broadcastToUI(data) {
     if (!wss)
         return;
+    const skipForward = Boolean(data && typeof data === 'object' && data.__bobLensInternalBroadcast === true);
+    if (skipForward && data && typeof data === 'object') {
+        delete data.__bobLensInternalBroadcast;
+    }
     const message = JSON.stringify(data);
+    let clientCount = 0;
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
             client.send(message);
+            clientCount++;
         }
     });
+    if (!skipForward && clientCount === 0) {
+        const mainPort = process.env.MAIN_HTTP_PORT || '8081';
+        fetch(`http://localhost:${mainPort}/internal-broadcast`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: message,
+        }).catch(() => { });
+    }
 }
 // Made with Bob

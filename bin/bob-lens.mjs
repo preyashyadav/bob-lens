@@ -164,6 +164,17 @@ notify_change({
   // 3. Spawn three processes concurrently
   const processes = [
     {
+      name: 'WebSocket Bridge',
+      cmd: 'node',
+      args: [join(bobLensRoot, 'mcp-server/dist/index.js')],
+      env: {
+        ...process.env,
+        WEBSOCKET_PORT: '8080',
+        HTTP_PORT: '8081',
+        WEBSOCKET_ONLY: 'true',
+      },
+    },
+    {
       name: 'UI',
       cmd: 'node',
       args: [viteBinPath, '--port', '3333', bobLensUiPath],
@@ -178,9 +189,10 @@ notify_change({
   ];
 
   console.log('🔍 Bob Lens starting...\n');
+  console.log('● WebSocket Bridge → ws://localhost:8080 (http://localhost:8081)');
   console.log('● UI            → http://localhost:3333');
   console.log('● Sandbox       → port 3334');
-  console.log('● MCP Server    → started automatically by IBM Bob IDE\n');
+  console.log('● MCP Server    → started by IBM Bob IDE automatically\n');
   console.log('Open http://localhost:3333 in your browser.');
   console.log('Make changes with IBM Bob IDE to see them visualized.\n');
   console.log('Press Ctrl+C to stop.\n');
