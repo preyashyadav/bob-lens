@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Check, Code2, CornerUpLeft, Eye, LayoutGrid, Loader2 } from 'lucide-react';
 import { ChangeSet, FileChange } from '../../../types/change';
 import AnalysisPanel from './AnalysisPanel';
 
@@ -90,11 +91,84 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
   const [analysisChangeId, setAnalysisChangeId] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<ScreenshotState | null>(null);
   const [showScreenshots, setShowScreenshots] = useState(false);
+  const [analysisReadyByChangeSetId, setAnalysisReadyByChangeSetId] = useState<Record<string, boolean>>({});
+  const [analysisPollingByChangeSetId, setAnalysisPollingByChangeSetId] = useState<Record<string, boolean>>({});
+
+  const latestChangeSetForHooks = changeSets?.length ? changeSets[changeSets.length - 1] : null;
+  const activeFileForHooks = latestChangeSetForHooks?.changes?.[activeTabIndex] ?? null;
+  const isReactComponent = !!activeFileForHooks?.filePath?.match(/\.(jsx|tsx)$/);
+
+  useEffect(() => {
+    if (!isReactComponent && showScreenshots) setShowScreenshots(false);
+  }, [isReactComponent, showScreenshots]);
+
+  useEffect(() => {
+    if (!latestChangeSetForHooks?.id) return;
+
+    const changeSetId = latestChangeSetForHooks.id;
+    if (analysisReadyByChangeSetId[changeSetId]) return;
+    if (analysisPollingByChangeSetId[changeSetId]) return;
+
+    let cancelled = false;
+    setAnalysisPollingByChangeSetId((prev) => ({ ...prev, [changeSetId]: true }));
+
+    const pollOnce = async (): Promise<boolean> => {
+      const ports = ['8083', '8081'];
+      for (const port of ports) {
+        try {
+          const resp = await fetch(`http://localhost:${port}/analysis/${changeSetId}`);
+          const data = await resp.json();
+          if (data?.success && data?.analysis) return true;
+        } catch {
+          // try next port
+        }
+      }
+      return false;
+    };
+
+    const start = async () => {
+      const readyNow = await pollOnce();
+      if (cancelled) return;
+
+      if (readyNow) {
+        setAnalysisReadyByChangeSetId((prev) => ({ ...prev, [changeSetId]: true }));
+        setAnalysisPollingByChangeSetId((prev) => ({ ...prev, [changeSetId]: false }));
+        return;
+      }
+
+      const intervalId = window.setInterval(async () => {
+        const ready = await pollOnce();
+        if (cancelled) return;
+        if (ready) {
+          window.clearInterval(intervalId);
+          setAnalysisReadyByChangeSetId((prev) => ({ ...prev, [changeSetId]: true }));
+          setAnalysisPollingByChangeSetId((prev) => ({ ...prev, [changeSetId]: false }));
+        }
+      }, 3000);
+
+      return () => window.clearInterval(intervalId);
+    };
+
+    let cleanup: void | (() => void);
+    start().then((c) => {
+      cleanup = c;
+    });
+
+    return () => {
+      cancelled = true;
+      cleanup?.();
+      setAnalysisPollingByChangeSetId((prev) => ({ ...prev, [changeSetId]: false }));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestChangeSetForHooks?.id]);
 
   if (!changeSets || changeSets.length === 0) {
     return (
       <div className="change-viewer">
         <div className="empty-state">
+          <div style={{ color: 'var(--text-secondary)' }}>
+            <Code2 size={28} />
+          </div>
           <h2>Waiting for Bob</h2>
           <p>Make a change in Bob IDE to see it visualized here</p>
         </div>
@@ -273,7 +347,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
       }}>
         <div style={{ 
           fontFamily: 'var(--font-ui)',
-          fontSize: '10px',
+          fontSize: '12px',
           fontWeight: 600,
           letterSpacing: '1px',
           color: 'var(--text-secondary)',
@@ -419,7 +493,9 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
           color: 'var(--text-secondary)'
         }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '16px' }}>⏳</div>
+            <div style={{ marginBottom: '16px', display: 'inline-flex' }}>
+              <Loader2 size={32} className="animate-spin" />
+            </div>
             <div>Rendering component screenshots...</div>
           </div>
         </div>
@@ -435,7 +511,10 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
           textAlign: 'center'
         }}>
           <div style={{ color: 'var(--error)', marginBottom: '8px' }}>
-            ⚠️ Screenshot rendering failed
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={14} />
+              Screenshot rendering failed
+            </span>
           </div>
           <div style={{ fontSize: '12px' }}>
             {screenshots.error || 'Unable to render component'}
@@ -474,7 +553,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
         }}>
           <div style={{ 
             fontFamily: 'var(--font-ui)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             letterSpacing: '1px',
             color: 'var(--text-secondary)',
@@ -510,7 +589,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
         }}>
           <div style={{ 
             fontFamily: 'var(--font-ui)',
-            fontSize: '10px',
+            fontSize: '12px',
             fontWeight: 600,
             letterSpacing: '1px',
             color: 'var(--text-secondary)',
@@ -555,13 +634,19 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
             className="btn-approve"
             onClick={() => onApprove(latestChangeSet.id)}
           >
-            ✓ Approve
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Check size={14} />
+              Approve
+            </span>
           </button>
           <button
             className="btn-rollback"
             onClick={() => onRollback(latestChangeSet.id)}
           >
-            ↩ Rollback
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <CornerUpLeft size={14} />
+              Rollback
+            </span>
           </button>
         </div>
       </div>
@@ -580,38 +665,94 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
             />
             {getFileName(file.filePath)}
             <span className="file-type-badge">{getFileTypeBadge(file.fileType)}</span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                setAnalysisChangeId(latestChangeSet.id);
-              }}
-              title="View analysis"
-              aria-label="View analysis"
-              style={{
-                marginLeft: 8,
-                background: 'transparent',
-                border: '1px solid #3e3e42',
-                color: '#cccccc',
-                borderRadius: 4,
-                cursor: 'pointer',
-                padding: '2px 6px',
-                fontSize: 12,
-                lineHeight: 1,
-                display: 'inline-flex',
-                alignItems: 'center',
-                userSelect: 'none',
-              }}
-            >
-              👁
-            </span>
-            {file.fileType === 'frontend' && (
-              <span
+            {/* Eye button states:
+                1) No analysis yet (disabled) — when analysis polling not started (should not happen after first change)
+                2) Loading/analyzing (disabled w/ spinner) — while polling
+                3) Ready (clickable) — when analysis found */}
+            {analysisReadyByChangeSetId[latestChangeSet.id] ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAnalysisChangeId(latestChangeSet.id);
+                }}
+                title="View analysis"
+                aria-label="View analysis"
+                style={{
+                  marginLeft: 8,
+                  background: 'transparent',
+                  border: '1px solid #3e3e42',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  fontSize: 12,
+                  lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  userSelect: 'none',
+                  color: 'var(--accent-blue)',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                <Eye size={14} />
+              </button>
+            ) : analysisPollingByChangeSetId[latestChangeSet.id] ? (
+              <button
+                disabled
+                title="Analyzing..."
+                aria-label="Analyzing..."
+                style={{
+                  marginLeft: 8,
+                  background: 'transparent',
+                  border: '1px solid #3e3e42',
+                  color: '#cccccc',
+                  borderRadius: 4,
+                  cursor: 'wait',
+                  padding: '2px 6px',
+                  fontSize: 12,
+                  lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  userSelect: 'none',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                <Loader2 size={14} className="animate-spin" />
+              </button>
+            ) : (
+              <button
+                disabled
+                title="No analysis yet"
+                aria-label="No analysis yet"
+                style={{
+                  marginLeft: 8,
+                  background: 'transparent',
+                  border: '1px solid #3e3e42',
+                  color: '#cccccc',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  fontSize: 12,
+                  lineHeight: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  userSelect: 'none',
+                  opacity: 0.4,
+                  cursor: 'not-allowed',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                <Eye size={14} />
+              </button>
+            )}
+
+            {/* Only show component preview toggle for React component files */}
+            {index === activeTabIndex && isReactComponent && (
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   fetchScreenshots();
                 }}
-                title="Preview UI Changes"
-                aria-label="Preview UI Changes"
+                title="Component Preview"
+                aria-label="Component Preview"
                 style={{
                   marginLeft: 8,
                   background: 'transparent',
@@ -625,10 +766,11 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
                   display: 'inline-flex',
                   alignItems: 'center',
                   userSelect: 'none',
+                  fontFamily: 'var(--font-ui)',
                 }}
               >
-                🖼️
-              </span>
+                <LayoutGrid size={14} />
+              </button>
             )}
           </button>
         ))}
@@ -637,7 +779,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
       {/* Bottom Section - Active Tab Content */}
       {activeFile && (
         <div className="tab-content">
-          {showScreenshots && activeFile.fileType === 'frontend' ? (
+          {showScreenshots && isReactComponent ? (
             <>
               <div style={{ 
                 height: '100%',
@@ -655,7 +797,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
                 }}>
                   <span style={{ 
                     fontFamily: 'var(--font-ui)',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     color: 'var(--text-secondary)'
                   }}>
                     Component Preview
@@ -669,7 +811,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
                       border: '1px solid var(--accent-blue)',
                       borderRadius: 'var(--radius)',
                       cursor: 'pointer',
-                      fontSize: '11px',
+                      fontSize: '12px',
                       fontFamily: 'var(--font-ui)'
                     }}
                   >
@@ -712,7 +854,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
               }}>
                 <div style={{ 
                   fontFamily: 'var(--font-ui)',
-                  fontSize: '10px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   letterSpacing: '1px',
                   color: 'var(--text-secondary)',

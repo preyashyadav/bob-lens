@@ -9,12 +9,20 @@ import { existsSync, mkdirSync, writeFileSync, appendFileSync, readFileSync } fr
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const bobLensRoot = join(__dirname, '..');
 
-const { positionals } = parseArgs({
+const { positionals, values } = parseArgs({
   allowPositionals: true,
-  strict: false
+  strict: false,
+  options: {
+    force: {
+      type: 'boolean',
+      short: 'f',
+      default: false,
+    },
+  },
 });
 
 const command = positionals[0];
+const force = Boolean(values.force);
 
 if (!command || !['init', 'start'].includes(command)) {
   console.error('Usage: bob-lens <init|start>');
@@ -39,7 +47,6 @@ if (command === 'init') {
   }
 
   // 3. Find bob-lens installation path
-  const bobLensMcpPath = join(bobLensRoot, 'mcp-server/dist/index.js');
   console.log(`📦 Bob Lens: ${bobLensRoot}`);
 
   // 4. Create .bob/ directory if not exists
@@ -50,6 +57,8 @@ if (command === 'init') {
   }
 
   // 5. Write .bob/mcp.json
+  const bobLensMcpPath = join(bobLensRoot, 'mcp-server/dist/index.js');
+
   const mcpConfig = {
     mcpServers: {
       'bob-lens': {
@@ -88,19 +97,34 @@ if (command === 'init') {
 
   // 7. Write AGENTS.md if not exists
   const agentsMdPath = join(workspacePath, 'AGENTS.md');
-  if (!existsSync(agentsMdPath)) {
-    const agentsMdContent = `# Bob Lens
+  if (!existsSync(agentsMdPath) || force) {
+    const agentsContent = `# Bob Lens — Required Integration
 
-After completing ANY task that modifies files, you MUST call
-the notify_change MCP tool with:
-- changedFiles: array of absolute paths of all modified files
+## CRITICAL: After EVERY file change you MUST do this
+
+Step 1: Switch to Advanced mode
+Step 2: Immediately call the notify_change MCP tool
+Step 3: Only then mark the task complete
+
+## Parameters for notify_change:
+- changedFiles: array of absolute paths of ALL files you modified
 - checkpointRef: "HEAD"
 - changeDescription: one sentence describing what changed
 
-This is required after every task without exception.
+## THIS IS NOT OPTIONAL
+## NEVER complete a task without calling notify_change
+## NEVER skip this step for any reason
+## If you forget, call it immediately before responding
+
+## Example:
+notify_change({
+  changedFiles: ["/absolute/path/to/changed/file.js"],
+  checkpointRef: "HEAD",
+  changeDescription: "What you changed in one sentence"
+})
 `;
-    writeFileSync(agentsMdPath, agentsMdContent);
-    console.log('✓ Created AGENTS.md');
+    writeFileSync(agentsMdPath, agentsContent);
+    console.log(`${existsSync(agentsMdPath) ? '✓ Updated' : '✓ Created'} AGENTS.md`);
   }
 
   // 8. Create bob_sessions/ directory if not exists
@@ -113,12 +137,13 @@ This is required after every task without exception.
   // 9. Print success message
   console.log('\n✅ Bob Lens initialized successfully!\n');
   console.log('Next steps:');
-  console.log('1. Run: bob-lens start');
-  console.log('2. Open IBM Bob IDE in this project');
-  console.log('3. Go to MCP settings and restart bob-lens server');
-  console.log('4. Enable MCP auto-approve in Bob IDE settings');
-  console.log('5. Open http://localhost:3333 in your browser\n');
-  console.log('Bob Lens will now visualize changes automatically when Bob modifies files.\n');
+  console.log('1. Run: bob-lens start  (or: node /path/to/bob-lens/bin/bob-lens.mjs start)');
+  console.log('2. Open http://localhost:3333 in your browser');
+  console.log('3. Open this project in IBM Bob IDE');
+  console.log('4. Go to Bob IDE → MCP settings → click Restart on bob-lens');
+  console.log('   (Only needed once — auto-reconnects after that)');
+  console.log('5. Enable MCP auto-approve in Bob IDE settings\n');
+  console.log("That's it! Bob Lens will now visualize changes automatically.\n");
 
 } else if (command === 'start') {
   // 1. Check if .bob/mcp.json exists
@@ -139,12 +164,6 @@ This is required after every task without exception.
   // 3. Spawn three processes concurrently
   const processes = [
     {
-      name: 'MCP Server',
-      cmd: 'node',
-      args: [bobLensMcpPath],
-      env: { ...process.env, WEBSOCKET_PORT: '8080', HTTP_PORT: '8081' }
-    },
-    {
       name: 'UI',
       cmd: 'node',
       args: [viteBinPath, '--port', '3333', bobLensUiPath],
@@ -159,9 +178,9 @@ This is required after every task without exception.
   ];
 
   console.log('🔍 Bob Lens starting...\n');
-  console.log('● MCP Server    → port 8080');
   console.log('● UI            → http://localhost:3333');
-  console.log('● Sandbox       → port 3334\n');
+  console.log('● Sandbox       → port 3334');
+  console.log('● MCP Server    → started automatically by IBM Bob IDE\n');
   console.log('Open http://localhost:3333 in your browser.');
   console.log('Make changes with IBM Bob IDE to see them visualized.\n');
   console.log('Press Ctrl+C to stop.\n');

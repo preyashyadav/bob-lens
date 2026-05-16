@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Loader2, X } from 'lucide-react';
 import FlowDiagram from './FlowDiagram';
 
 interface FlowNode {
@@ -59,20 +60,16 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
     setErrorMessage(null);
     setAnalysis(null);
 
-    // Try Bob IDE's MCP instance first (port 8083), then fallback to main server (8081)
-    const ports = ['8083', '8081'];
-    for (const port of ports) {
-      try {
-        const resp = await fetch(`http://localhost:${port}/analysis/${changeId}`);
-        const data = (await resp.json()) as AnalysisPayload;
-        if (data.success && data.analysis) {
-          setAnalysis(data.analysis);
-          setLoading(false);
-          return;
-        }
-      } catch {
-        // try next port
+    try {
+      const res = await fetch(`http://localhost:8083/analysis/${changeId}`);
+      const data = (await res.json()) as AnalysisPayload;
+      if (data.success && data.analysis) {
+        setAnalysis(data.analysis);
+        setLoading(false);
+        return;
       }
+    } catch {
+      // ignore
     }
 
     setNotReady(true);
@@ -133,13 +130,14 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
             borderBottom: '1px solid #3e3e42',
           }}
         >
-          <div style={{ flex: 1, fontWeight: 700, fontSize: 13, color: '#cccccc' }}>
+          <div style={{ flex: 1, fontWeight: 700, fontSize: 13, fontFamily: 'var(--font-ui)', color: '#cccccc' }}>
             {summary}
           </div>
           <div
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 700,
+              fontFamily: 'var(--font-ui)',
               padding: '4px 8px',
               borderRadius: 999,
               background: verdictStyle.bg,
@@ -158,23 +156,25 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
               cursor: 'pointer',
               padding: '4px 8px',
               lineHeight: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
             }}
             aria-label="Close"
             title="Close"
           >
-            X
+            <X size={14} />
           </button>
         </div>
 
         {/* Main area */}
         <div style={{ padding: 16, overflow: 'auto' }}>
           {loading ? (
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: '#cccccc', fontSize: 13 }}>
-              <span className="status-icon active spinning">◉</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', color: '#cccccc', fontSize: 13, fontFamily: 'var(--font-ui)' }}>
+              <Loader2 size={14} className="animate-spin" />
               <span>Bob is analyzing...</span>
             </div>
           ) : errorMessage ? (
-            <div style={{ color: '#cccccc', fontSize: 13 }}>
+            <div style={{ color: '#cccccc', fontSize: 13, fontFamily: 'var(--font-ui)' }}>
               <div style={{ marginBottom: 10 }}>{errorMessage}</div>
               <button
                 onClick={fetchAnalysis}
@@ -187,13 +187,14 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
                   padding: '6px 10px',
                   fontSize: 12,
                   fontWeight: 600,
+                  fontFamily: 'var(--font-ui)',
                 }}
               >
                 Retry
               </button>
             </div>
           ) : notReady ? (
-            <div style={{ color: '#cccccc', fontSize: 13 }}>
+            <div style={{ color: '#cccccc', fontSize: 13, fontFamily: 'var(--font-ui)' }}>
               <div style={{ marginBottom: 10 }}>
                 Analysis in progress... Bob is still thinking. Try again in a moment.
               </div>
@@ -208,6 +209,7 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
                   padding: '6px 10px',
                   fontSize: 12,
                   fontWeight: 600,
+                  fontFamily: 'var(--font-ui)',
                 }}
               >
                 Retry
@@ -217,7 +219,7 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <div style={{ color: '#cccccc', fontWeight: 700, fontSize: 12, marginBottom: 8 }}>BEFORE</div>
+                  <div style={{ color: '#cccccc', fontWeight: 700, fontSize: 12, fontFamily: 'var(--font-ui)', marginBottom: 8 }}>BEFORE</div>
                   <div
                     style={{
                       height: 400,
@@ -231,7 +233,7 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: '#cccccc', fontWeight: 700, fontSize: 12, marginBottom: 8 }}>AFTER</div>
+                  <div style={{ color: '#cccccc', fontWeight: 700, fontSize: 12, fontFamily: 'var(--font-ui)', marginBottom: 8 }}>AFTER</div>
                   <div
                     style={{
                       height: 400,
@@ -246,13 +248,13 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
                 </div>
               </div>
 
-              <div style={{ color: '#cccccc', fontSize: 13, padding: '12px 16px' }}>
+              <div style={{ color: '#cccccc', fontSize: 13, fontFamily: 'var(--font-ui)', padding: '12px 16px' }}>
                 {explanation}
               </div>
 
               {risks.length > 0 && (
                 <div style={{ padding: '0 16px 16px' }}>
-                  <div style={{ color: '#cccccc', fontWeight: 700, fontSize: 12, marginBottom: 8 }}>Risks</div>
+                  <div style={{ color: '#cccccc', fontWeight: 700, fontSize: 12, fontFamily: 'var(--font-ui)', marginBottom: 8 }}>Risks</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {risks.map((risk, idx) => (
                       <div
@@ -266,10 +268,13 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
                           border: '1px solid rgba(255,152,0,0.35)',
                           background: 'rgba(255,152,0,0.12)',
                           color: '#cccccc',
-                          fontSize: 13,
+                          fontSize: 12,
+                          fontFamily: 'var(--font-ui)',
                         }}
                       >
-                        <span style={{ color: '#ff9800' }}>⚠️</span>
+                        <span style={{ color: '#ff9800', display: 'inline-flex', marginTop: 1 }}>
+                          <AlertTriangle size={14} />
+                        </span>
                         <span>{risk}</span>
                       </div>
                     ))}

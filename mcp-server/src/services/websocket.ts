@@ -20,35 +20,66 @@ let wss: WebSocketServer;
 export const analysisCache = new Map<string, CachedAnalysis>();
 
 export async function startWebSocketServer(mcpServer: Server): Promise<void> {
-  const port = process.env.WEBSOCKET_PORT || 8080;
-  
-  wss = new WebSocketServer({ port: Number(port) });
+  const initialPort = Number(process.env.WEBSOCKET_PORT || 8080);
 
-  wss.on('connection', (ws: WebSocket) => {
-    console.error('UI connected via WebSocket');
+  const attachWssHandlers = (server: WebSocketServer) => {
+    server.on('connection', (ws: WebSocket) => {
+      console.error('UI connected via WebSocket');
 
-    ws.on('message', (message: Buffer) => {
-      console.error('Received from UI:', message.toString());
-      
-      // Handle messages from UI if needed
-      try {
-        const data = JSON.parse(message.toString());
-        handleUIMessage(ws, data);
-      } catch (error) {
-        console.error('Failed to parse UI message:', error);
+      ws.on('message', (message: Buffer) => {
+        console.error('Received from UI:', message.toString());
+
+        // Handle messages from UI if needed
+        try {
+          const data = JSON.parse(message.toString());
+          handleUIMessage(ws, data);
+        } catch (error) {
+          console.error('Failed to parse UI message:', error);
+        }
+      });
+
+      ws.on('close', () => {
+        console.error('UI disconnected');
+      });
+
+      ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
+      });
+    });
+  };
+
+  const createWebSocketServer = (portNumber: number): WebSocketServer => {
+    const server = new WebSocketServer({ port: portNumber });
+
+    server.on('listening', () => {
+      console.error(`WebSocket server listening on port ${portNumber}`);
+    });
+
+    server.on('error', (err: any) => {
+      if (err?.code === 'EADDRINUSE') {
+        console.error(`Port ${portNumber} in use, waiting 2s before retry...`);
+        setTimeout(() => {
+          try {
+            server.close();
+          } catch {
+            // ignore
+          }
+
+          // Try the next port instead of crashing.
+          wss = createWebSocketServer(portNumber + 1);
+          attachWssHandlers(wss);
+        }, 2000);
+        return;
       }
+
+      throw err;
     });
 
-    ws.on('close', () => {
-      console.error('UI disconnected');
-    });
+    attachWssHandlers(server);
+    return server;
+  };
 
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-    });
-  });
-
-  console.error(`WebSocket server listening on port ${port}`);
+  wss = createWebSocketServer(initialPort);
 
   // Start HTTP test server on port 8081
   let sseTransport: SSEServerTransport | null = null;
@@ -176,28 +207,6 @@ export async function startWebSocketServer(mcpServer: Server): Promise<void> {
           res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
         }
       });
-    } else if (req.method === 'POST' && req.url === '/internal-broadcast') {
-      let body = '';
-      
-      req.on('data', (chunk) => {
-        body += chunk.toString();
-      });
-      
-      req.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          
-          // Broadcast to UI clients
-          // Mark as internal to prevent broadcastToUI from HTTP-forwarding back to this endpoint.
-          broadcastToUI({ ...data, __bobLensInternalBroadcast: true });
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true, message: 'Broadcast forwarded' }));
-        } catch (error) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
-        }
-      });
     } else if (req.method === 'GET' && req.url?.startsWith('/analysis/')) {
       // Extract changeId from URL
       const changeId = req.url.split('/analysis/')[1];
@@ -241,37 +250,14 @@ function handleUIMessage(ws: WebSocket, data: any): void {
 }
 
 export function broadcastToUI(data: any): void {
-  const skipForward = Boolean(data && typeof data === 'object' && (data as any).__bobLensInternalBroadcast === true);
-  if (skipForward && data && typeof data === 'object') {
-    // Do not leak internal marker to UI clients.
-    delete (data as any).__bobLensInternalBroadcast;
-  }
-
+  if (!wss) return;
   const message = JSON.stringify(data);
 
-  // Try direct WebSocket broadcast first
-  let clientCount = 0;
-  if (wss) {
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(message);
-        clientCount++;
-      }
-    });
-  }
-
-  // If no clients connected, forward to main server via HTTP
-  // (Skip forwarding when the call originated from /internal-broadcast to avoid loops.)
-  if (!skipForward && clientCount === 0) {
-    const mainServerPort = process.env.MAIN_HTTP_PORT || '8081';
-    fetch(`http://localhost:${mainServerPort}/internal-broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: message
-    }).catch((err) => {
-      console.error('Failed to forward broadcast:', err.message);
-    });
-  }
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
 }
 
 // Made with Bob
