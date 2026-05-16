@@ -1,8 +1,11 @@
 {
   "name": "bob-lens",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "Local developer tool that visualizes AI-generated code changes from IBM Bob IDE",
+  "bin": {
+    "bob-lens": "./bin/bob-lens.mjs"
+  },
   "workspaces": [
     "mcp-server",
     "ui",
@@ -10,6 +13,7 @@
     "types"
   ],
   "scripts": {
+    "prepare": "npm run build:all",
     "install:all": "npm install && npm install --workspace=mcp-server && npm install --workspace=ui && npm install --workspace=sandbox",
     "dev:mcp": "npm run dev --workspace=mcp-server",
     "dev:ui": "npm run dev --workspace=ui",
