@@ -6,23 +6,22 @@
   "bin": {
     "bob-lens": "./bin/bob-lens.mjs"
   },
-  "workspaces": [
-    "mcp-server",
-    "ui",
-    "sandbox",
-    "types"
-  ],
-  "scripts": {
-    "install:all": "npm install && npm install --workspace=mcp-server && npm install --workspace=ui && npm install --workspace=sandbox",
-    "dev:mcp": "npm run dev --workspace=mcp-server",
-    "dev:ui": "npm run dev --workspace=ui",
-    "dev:sandbox": "npm run dev --workspace=sandbox",
-    "dev": "concurrently \"npm run dev:mcp\" \"npm run dev:ui\" \"npm run dev:sandbox\"",
-    "build:all": "npm run build --workspace=mcp-server && npm run build --workspace=ui && npm run build --workspace=sandbox",
-    "clean": "rm -rf node_modules mcp-server/node_modules ui/node_modules sandbox/node_modules types/node_modules"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2",
-    "typescript": "^5.3.3"
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.5",
+    "cors": "^2.8.5",
+    "diff": "^5.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "isolated-vm": "^5.0.1",
+    "lucide-react": "^1.16.0",
+    "mermaid": "^10.6.1",
+    "puppeteer": "^24.15.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-syntax-highlighter": "^15.5.0",
+    "reactflow": "^11.11.4",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
   }
 }

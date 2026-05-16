@@ -5,6 +5,7 @@ import { execSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync, appendFileSync, readFileSync } from 'node:fs';
+import express from 'express';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const bobLensRoot = join(__dirname, '..');
@@ -158,27 +159,29 @@ notify_change({
   // 2. Get bobLensRoot
   const bobLensMcpPath = join(bobLensRoot, 'mcp-server/dist/index.js');
   const bobLensSandboxPath = join(bobLensRoot, 'sandbox/dist/index.js');
-  const bobLensUiPath = join(bobLensRoot, 'ui');
-  const viteBinPath = join(bobLensRoot, 'node_modules/.bin/vite');
+  const bobLensUiDistPath = join(bobLensRoot, 'ui/dist');
 
-  // 3. Spawn three processes concurrently
+  // 3. Start UI server (serves pre-built ui/dist)
+  const uiPort = Number.parseInt(process.env.UI_PORT || '3333', 10);
+  const uiApp = express();
+  uiApp.use(express.static(bobLensUiDistPath, { index: false }));
+  uiApp.get('*', (_req, res) => res.sendFile(join(bobLensUiDistPath, 'index.html')));
+  uiApp.listen(uiPort, () => {
+    console.log(`UI server listening on port ${uiPort}`);
+  });
+
+  // 4. Spawn remaining processes concurrently
   const processes = [
     {
       name: 'WebSocket Bridge',
       cmd: 'node',
-      args: [join(bobLensRoot, 'mcp-server/dist/index.js')],
+      args: [bobLensMcpPath],
       env: {
         ...process.env,
         WEBSOCKET_PORT: '8080',
         HTTP_PORT: '8081',
         WEBSOCKET_ONLY: 'true',
       },
-    },
-    {
-      name: 'UI',
-      cmd: 'node',
-      args: [viteBinPath, '--port', '3333', bobLensUiPath],
-      env: { ...process.env }
     },
     {
       name: 'Sandbox',
@@ -190,10 +193,10 @@ notify_change({
 
   console.log('🔍 Bob Lens starting...\n');
   console.log('● WebSocket Bridge → ws://localhost:8080 (http://localhost:8081)');
-  console.log('● UI            → http://localhost:3333');
+  console.log(`● UI            → http://localhost:${uiPort}`);
   console.log('● Sandbox       → port 3334');
   console.log('● MCP Server    → started by IBM Bob IDE automatically\n');
-  console.log('Open http://localhost:3333 in your browser.');
+  console.log(`Open http://localhost:${uiPort} in your browser.`);
   console.log('Make changes with IBM Bob IDE to see them visualized.\n');
   console.log('Press Ctrl+C to stop.\n');
 
@@ -207,7 +210,7 @@ notify_change({
     const open = process.platform === 'darwin' ? 'open' : 
                  process.platform === 'win32' ? 'start' : 'xdg-open';
     try {
-      spawn(open, ['http://localhost:3333'], { detached: true, stdio: 'ignore' }).unref();
+      spawn(open, [`http://localhost:${uiPort}`], { detached: true, stdio: 'ignore' }).unref();
     } catch (err) {
       // Silently fail if browser can't be opened
     }
