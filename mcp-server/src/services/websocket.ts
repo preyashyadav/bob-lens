@@ -1,11 +1,21 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import * as http from 'http';
-import { BobAnalysis } from './bobshell-runner.js';
+
+interface CachedAnalysis {
+  before: any[];
+  after: any[];
+  edges_before: any[];
+  edges_after: any[];
+  summary: string;
+  explanation: string;
+  risks: string[];
+  verdict: 'safe' | 'review' | 'risky';
+}
 
 let wss: WebSocketServer;
 
 // In-memory cache for analysis results
-export const analysisCache = new Map<string, BobAnalysis>();
+export const analysisCache = new Map<string, CachedAnalysis>();
 
 export async function startWebSocketServer(): Promise<void> {
   const port = process.env.WEBSOCKET_PORT || 8080;
@@ -80,8 +90,17 @@ export async function startWebSocketServer(): Promise<void> {
               } as any).then((result: any) => {
                 try {
                   const parsed = JSON.parse(result.content[0].text);
-                  if (parsed.success && parsed.flowGraph) {
-                    analysisCache.set(changeId, parsed.flowGraph);
+                  if (parsed.success) {
+                    analysisCache.set(changeId, {
+                      before: parsed.flowGraph?.before || [],
+                      after: parsed.flowGraph?.after || [],
+                      edges_before: parsed.flowGraph?.edges_before || [],
+                      edges_after: parsed.flowGraph?.edges_after || [],
+                      summary: parsed.summary || '',
+                      explanation: parsed.explanation || '',
+                      risks: parsed.risks || [],
+                      verdict: parsed.verdict || 'review'
+                    });
                     console.error(`Bob analysis cached for changeId: ${changeId}`);
                   }
                 } catch (e: any) {

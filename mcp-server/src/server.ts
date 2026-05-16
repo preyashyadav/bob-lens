@@ -107,8 +107,17 @@ export function setupMCPTools(server: Server): void {
         changeId: notifyData.changeId
       } as any).then(result => {
         const parsed = JSON.parse(result.content[0].text);
-        if (parsed.success && parsed.flowGraph) {
-          analysisCache.set(notifyData.changeId, parsed.flowGraph);
+        if (parsed.success) {
+          analysisCache.set(notifyData.changeId, {
+            before: parsed.flowGraph?.before || [],
+            after: parsed.flowGraph?.after || [],
+            edges_before: parsed.flowGraph?.edges_before || [],
+            edges_after: parsed.flowGraph?.edges_after || [],
+            summary: parsed.summary || '',
+            explanation: parsed.explanation || '',
+            risks: parsed.risks || [],
+            verdict: parsed.verdict || 'review'
+          });
           console.error(`Analysis cached for ${notifyData.changeId}`);
         }
       }).catch(err => {
@@ -122,9 +131,23 @@ export function setupMCPTools(server: Server): void {
       const result = await askBobHandler(args as any);
       
       // Store analysis in cache if successful
-      if (result.analysis && result.changeId) {
-        analysisCache.set(result.changeId, result.analysis);
-        console.error(`Cached analysis for changeId: ${result.changeId}`);
+      try {
+        const parsed = JSON.parse(result.content[0].text);
+        if (parsed.success && parsed.changeId) {
+          analysisCache.set(parsed.changeId, {
+            before: parsed.flowGraph?.before || [],
+            after: parsed.flowGraph?.after || [],
+            edges_before: parsed.flowGraph?.edges_before || [],
+            edges_after: parsed.flowGraph?.edges_after || [],
+            summary: parsed.summary || '',
+            explanation: parsed.explanation || '',
+            risks: parsed.risks || [],
+            verdict: parsed.verdict || 'review'
+          });
+          console.error(`Cached analysis for changeId: ${parsed.changeId}`);
+        }
+      } catch (e: any) {
+        console.error('Failed to cache Bob analysis:', e.message);
       }
       
       return result;

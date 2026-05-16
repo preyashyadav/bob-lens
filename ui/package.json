@@ -10,17 +10,18 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "diff": "^5.1.0",
+    "mermaid": "^10.6.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-syntax-highlighter": "^15.5.0",
-    "mermaid": "^10.6.1",
-    "diff": "^5.1.0"
+    "reactflow": "^11.11.4"
   },
   "devDependencies": {
+    "@types/diff": "^5.0.9",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
     "@types/react-syntax-highlighter": "^15.5.11",
-    "@types/diff": "^5.0.9",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.11"

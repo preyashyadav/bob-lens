@@ -1,11 +1,10 @@
 #!/usr/bin/env node
+import * as dotenv from 'dotenv';
+dotenv.config();
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { setupMCPTools } from './server.js';
 import { startWebSocketServer } from './services/websocket.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 async function main() {
   const server = new Server(

@@ -1,16 +1,12 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['reactflow']
+  },
   server: {
-    port: 3333,
-    open: true,
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
-  },
+    port: 3333
+  }
 });
-
-// Made with Bob
