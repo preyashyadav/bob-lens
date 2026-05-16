@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "bob-lens": {
+      "command": "node",
+      "args": ["mcp-server/dist/index.js"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}
+
+// Made with Bob

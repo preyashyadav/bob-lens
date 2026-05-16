@@ -1,0 +1,28 @@
+{
+  "name": "@bob-lens/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "MCP server for Bob Lens - connects IBM Bob IDE to visualization UI",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "ws": "^8.16.0",
+    "axios": "^1.6.5",
+    "dotenv": "^16.3.1",
+    "zod": "^3.22.4",
+    "diff": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/ws": "^8.5.10",
+    "@types/diff": "^5.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

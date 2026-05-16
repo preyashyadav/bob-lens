@@ -1,0 +1,25 @@
+{
+  "name": "bob-lens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local developer tool that visualizes AI-generated code changes from IBM Bob IDE",
+  "workspaces": [
+    "mcp-server",
+    "ui",
+    "sandbox",
+    "types"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --workspace=mcp-server && npm install --workspace=ui && npm install --workspace=sandbox",
+    "dev:mcp": "npm run dev --workspace=mcp-server",
+    "dev:ui": "npm run dev --workspace=ui",
+    "dev:sandbox": "npm run dev --workspace=sandbox",
+    "dev": "concurrently \"npm run dev:mcp\" \"npm run dev:ui\" \"npm run dev:sandbox\"",
+    "build:all": "npm run build --workspace=mcp-server && npm run build --workspace=ui && npm run build --workspace=sandbox",
+    "clean": "rm -rf node_modules mcp-server/node_modules ui/node_modules sandbox/node_modules types/node_modules"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

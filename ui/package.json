@@ -1,0 +1,28 @@
+{
+  "name": "@bob-lens/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "React UI for Bob Lens - visualizes code changes with before/after views",
+  "scripts": {
+    "dev": "vite --port 3333 --open",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-syntax-highlighter": "^15.5.0",
+    "mermaid": "^10.6.1",
+    "diff": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/react-syntax-highlighter": "^15.5.11",
+    "@types/diff": "^5.0.9",
+    "@vitejs/plugin-react": "^4.2.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11"
+  }
+}
