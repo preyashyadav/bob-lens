@@ -23,6 +23,20 @@ export function setupMCPTools(server: Server): void {
               items: { type: "string" },
               description: "Array of changed file paths"
             },
+            changes: {
+              type: "array",
+              description: "Full change objects (preferred when available)",
+              items: {
+                type: "object",
+                properties: {
+                  filePath: { type: "string" },
+                  fileType: { type: "string" },
+                  before: { type: "string" },
+                  after: { type: "string" }
+                },
+                required: ["filePath"]
+              }
+            },
             checkpointRef: {
               type: "string",
               description: "Git ref or checkpoint ID"
@@ -32,7 +46,7 @@ export function setupMCPTools(server: Server): void {
               description: "Optional summary of changes"
             }
           },
-          required: ["changedFiles", "checkpointRef"]
+          required: ["checkpointRef"]
         }
       },
       {
@@ -102,7 +116,7 @@ export function setupMCPTools(server: Server): void {
     if (notifyData.success && notifyData.changeId) {
       // Don't await — run analysis in background
       askBobHandler({
-        changes: (args as any).changes || [],
+        changes: notifyData.changes || [],
         taskDescription: (args as any).changeDescription || 'Code change',
         changeId: notifyData.changeId
       } as any).then(result => {

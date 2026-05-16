@@ -23,13 +23,20 @@ async function main() {
   setupMCPTools(server);
 
   // Start WebSocket server for UI communication
-  await startWebSocketServer();
+  await startWebSocketServer(server);
 
-  // Connect via STDIO
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  // Only one transport can be connected at a time. Default behavior:
+  // - If we're spawned by a client (stdin is not a TTY), use STDIO.
+  // - If we're run interactively, expose the SSE endpoint at http://localhost:8081/mcp.
+  const shouldConnectStdio = process.env.MCP_TRANSPORT === 'stdio' || !process.stdin.isTTY;
+  if (shouldConnectStdio) {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('Bob Lens MCP Server running on STDIO');
+  } else {
+    console.error('Bob Lens MCP Server awaiting SSE connection on http://localhost:8081/mcp');
+  }
 
-  console.error('Bob Lens MCP Server running on STDIO');
 }
 
 main().catch((error) => {

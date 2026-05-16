@@ -1,5 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import * as http from 'http';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/dist/server/sse.js';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 interface CachedAnalysis {
   before: any[];
@@ -17,7 +19,7 @@ let wss: WebSocketServer;
 // In-memory cache for analysis results
 export const analysisCache = new Map<string, CachedAnalysis>();
 
-export async function startWebSocketServer(): Promise<void> {
+export async function startWebSocketServer(mcpServer: Server): Promise<void> {
   const port = process.env.WEBSOCKET_PORT || 8080;
   
   wss = new WebSocketServer({ port: Number(port) });
@@ -49,7 +51,9 @@ export async function startWebSocketServer(): Promise<void> {
   console.error(`WebSocket server listening on port ${port}`);
 
   // Start HTTP test server on port 8081
-  const httpServer = http.createServer((req, res) => {
+  let sseTransport: SSEServerTransport | null = null;
+
+  const httpServer = http.createServer(async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -59,6 +63,59 @@ export async function startWebSocketServer(): Promise<void> {
       res.writeHead(200);
       res.end();
       return;
+    }
+
+    // MCP over SSE (GET establishes stream; POST sends messages using ?sessionId=...)
+    // Bob IDE uses this to connect over HTTP without spawning a new MCP process.
+    try {
+      const url = new URL(req.url ?? '/', 'http://localhost');
+      if (url.pathname === '/mcp') {
+        if (req.method === 'GET') {
+          if (sseTransport) {
+            res.writeHead(409, { 'Content-Type': 'text/plain' });
+            res.end('MCP SSE transport already connected');
+            return;
+          }
+
+          // Route requested by user:
+          // if (req.url === '/mcp') {
+          //   const transport = new SSEServerTransport('/mcp', res);
+          //   await mcpServer.connect(transport);
+          //   return;
+          // }
+          const transport = new SSEServerTransport('/mcp', res);
+          sseTransport = transport;
+          transport.onclose = () => {
+            sseTransport = null;
+          };
+
+          await mcpServer.connect(transport);
+          return;
+        }
+
+        if (req.method === 'POST') {
+          if (!sseTransport) {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('MCP SSE transport not connected');
+            return;
+          }
+          const sessionId = url.searchParams.get('sessionId');
+          if (!sessionId || sessionId !== sseTransport.sessionId) {
+            res.writeHead(400, { 'Content-Type': 'text/plain' });
+            res.end('Invalid or missing sessionId');
+            return;
+          }
+
+          await sseTransport.handlePostMessage(req, res);
+          return;
+        }
+
+        res.writeHead(405, { 'Content-Type': 'text/plain' });
+        res.end('Method not allowed');
+        return;
+      }
+    } catch {
+      // Fall through to other routes
     }
 
     if (req.method === 'POST' && req.url === '/trigger') {
@@ -119,6 +176,28 @@ export async function startWebSocketServer(): Promise<void> {
           res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
         }
       });
+    } else if (req.method === 'POST' && req.url === '/internal-broadcast') {
+      let body = '';
+      
+      req.on('data', (chunk) => {
+        body += chunk.toString();
+      });
+      
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          
+          // Broadcast to UI clients
+          // Mark as internal to prevent broadcastToUI from HTTP-forwarding back to this endpoint.
+          broadcastToUI({ ...data, __bobLensInternalBroadcast: true });
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, message: 'Broadcast forwarded' }));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
+        }
+      });
     } else if (req.method === 'GET' && req.url?.startsWith('/analysis/')) {
       // Extract changeId from URL
       const changeId = req.url.split('/analysis/')[1];
@@ -161,18 +240,37 @@ function handleUIMessage(ws: WebSocket, data: any): void {
 }
 
 export function broadcastToUI(data: any): void {
-  if (!wss) {
-    console.error('WebSocket server not initialized');
-    return;
+  const skipForward = Boolean(data && typeof data === 'object' && (data as any).__bobLensInternalBroadcast === true);
+  if (skipForward && data && typeof data === 'object') {
+    // Do not leak internal marker to UI clients.
+    delete (data as any).__bobLensInternalBroadcast;
   }
 
   const message = JSON.stringify(data);
-  
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  });
+
+  // Try direct WebSocket broadcast first
+  let clientCount = 0;
+  if (wss) {
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+        clientCount++;
+      }
+    });
+  }
+
+  // If no clients connected, forward to main server via HTTP
+  // (Skip forwarding when the call originated from /internal-broadcast to avoid loops.)
+  if (!skipForward && clientCount === 0) {
+    const httpPort = process.env.HTTP_PORT || '8081';
+    fetch(`http://localhost:${httpPort}/internal-broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: message
+    }).catch((err) => {
+      console.error('Failed to forward broadcast:', err.message);
+    });
+  }
 }
 
 // Made with Bob
