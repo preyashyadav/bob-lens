@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import * as http from 'http';
 
 let wss: WebSocketServer;
 
@@ -32,6 +33,37 @@ export async function startWebSocketServer(): Promise<void> {
   });
 
   console.error(`WebSocket server listening on port ${port}`);
+
+  // Start HTTP test server on port 8081
+  const httpServer = http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/trigger') {
+      let body = '';
+      
+      req.on('data', (chunk) => {
+        body += chunk.toString();
+      });
+      
+      req.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          broadcastToUI(data);
+          
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: true, message: 'Broadcast sent' }));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
+        }
+      });
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found' }));
+    }
+  });
+
+  httpServer.listen(8081, () => {
+    console.error('HTTP test server listening on port 8081');
+  });
 }
 
 function handleUIMessage(ws: WebSocket, data: any): void {

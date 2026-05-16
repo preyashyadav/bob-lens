@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
+import { ChangeSet } from '../../../types/change';
 
 export function useWebSocket() {
   const [connected, setConnected] = useState(false);
-  const [changeData, setChangeData] = useState<any>(null);
+  const [changeSets, setChangeSets] = useState<ChangeSet[]>([]);
+
+  const clearChanges = () => {
+    setChangeSets([]);
+  };
 
   useEffect(() => {
     const wsUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080';
@@ -19,7 +24,7 @@ export function useWebSocket() {
         console.log('Received data:', data);
         
         if (data.type === 'change_notification') {
-          setChangeData(data.data);
+          setChangeSets((prev) => [...prev, data.data]);
         }
       } catch (error) {
         console.error('Failed to parse WebSocket message:', error);
@@ -40,7 +45,7 @@ export function useWebSocket() {
     };
   }, []);
 
-  return { connected, changeData };
+  return { connected, changeSets, clearChanges };
 }
 
 // Made with Bob

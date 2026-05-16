@@ -1,11 +1,19 @@
-import { useState } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import ChangeViewer from './components/ChangeViewer';
 import TestRunner from './components/TestRunner';
 
 function App() {
-  const { connected, changeData } = useWebSocket();
-  const [activeTab, setActiveTab] = useState<'changes' | 'test'>('changes');
+  const { connected, changeSets, clearChanges } = useWebSocket();
+
+  const handleApprove = (id: string) => {
+    console.log('Approved changeSet:', id);
+    clearChanges();
+  };
+
+  const handleRollback = (id: string) => {
+    console.log('Rollback changeSet:', id);
+    clearChanges();
+  };
 
   return (
     <div className="app">
@@ -18,24 +26,13 @@ function App() {
         </div>
       </header>
 
-      <nav className="nav">
-        <button
-          className={`nav-button ${activeTab === 'changes' ? 'active' : ''}`}
-          onClick={() => setActiveTab('changes')}
-        >
-          Code Changes
-        </button>
-        <button
-          className={`nav-button ${activeTab === 'test' ? 'active' : ''}`}
-          onClick={() => setActiveTab('test')}
-        >
-          Run Test
-        </button>
-      </nav>
-
       <main className="main">
-        {activeTab === 'changes' && <ChangeViewer data={changeData} />}
-        {activeTab === 'test' && <TestRunner />}
+        <ChangeViewer
+          changeSets={changeSets}
+          onApprove={handleApprove}
+          onRollback={handleRollback}
+        />
+        <TestRunner />
       </main>
     </div>
   );

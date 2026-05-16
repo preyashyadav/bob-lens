@@ -2,21 +2,20 @@
  * Code Change Types
  */
 
-export interface CodeChange {
+export interface FileChange {
   filePath: string;
+  fileType: 'frontend' | 'backend' | 'config';
   before: string;
   after: string;
   diff: string;
-  fileType: 'frontend' | 'backend' | 'config';
-  timestamp: string;
 }
 
 export interface ChangeSet {
   id: string;
   checkpointRef: string;
-  changes: CodeChange[];
   description?: string;
   timestamp: string;
+  changes: FileChange[];
 }
 
 export interface DiffLine {
