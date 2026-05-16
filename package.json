@@ -23,5 +23,8 @@
     "reactflow": "^11.11.4",
     "ws": "^8.16.0",
     "zod": "^3.22.4"
-  }
+  },
+  "author": "Preyash Yadav <www.preyashyadav.com>",
+  "homepage": "https://www.preyashyadav.com",
+  "repository": "https://github.com/preyashyadav/bob-lens"
 }
