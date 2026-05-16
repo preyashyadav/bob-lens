@@ -1,14 +1,14 @@
-import { useState } from 'react';
 import { ChangeSet, FileChange } from '../../../types/change';
 
 interface ChangeViewerProps {
   changeSets: ChangeSet[];
   onApprove: (id: string) => void;
   onRollback: (id: string) => void;
+  activeTabIndex: number;
+  onTabChange: (index: number) => void;
 }
 
-function ChangeViewer({ changeSets, onApprove, onRollback }: ChangeViewerProps) {
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTabChange }: ChangeViewerProps) {
 
   if (!changeSets || changeSets.length === 0) {
     return (
@@ -115,7 +115,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback }: ChangeViewerProps) 
           <button
             key={index}
             className={`file-tab ${index === activeTabIndex ? 'active' : ''}`}
-            onClick={() => setActiveTabIndex(index)}
+            onClick={() => onTabChange(index)}
           >
             <span
               className="change-indicator"

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import ChangeViewer from './components/ChangeViewer';
 import TestRunner from './components/TestRunner';
 
 function App() {
   const { connected, changeSets, clearChanges } = useWebSocket();
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const handleApprove = (id: string) => {
     console.log('Approved changeSet:', id);
@@ -14,6 +16,18 @@ function App() {
     console.log('Rollback changeSet:', id);
     clearChanges();
   };
+
+  // Get the active file from the latest changeset
+  const latestChangeSet = changeSets && changeSets.length > 0 
+    ? changeSets[changeSets.length - 1] 
+    : null;
+  
+  const activeFile = latestChangeSet && latestChangeSet.changes[activeTabIndex]
+    ? {
+        filePath: latestChangeSet.changes[activeTabIndex].filePath,
+        fileType: latestChangeSet.changes[activeTabIndex].fileType
+      }
+    : undefined;
 
   return (
     <div className="app">
@@ -31,8 +45,10 @@ function App() {
           changeSets={changeSets}
           onApprove={handleApprove}
           onRollback={handleRollback}
+          activeTabIndex={activeTabIndex}
+          onTabChange={setActiveTabIndex}
         />
-        <TestRunner />
+        <TestRunner activeFile={activeFile} />
       </main>
     </div>
   );
