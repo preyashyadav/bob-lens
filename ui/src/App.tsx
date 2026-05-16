@@ -61,8 +61,8 @@ function App() {
       </header>
 
       <main className="main" style={{ overflow: 'hidden' }}>
-        <div style={{ display: 'flex', height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflow: 'auto', borderRight: '1px solid var(--border)' }}>
+        <div style={{ height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', overflow: 'auto' }}>
             <ChangeViewer
               changeSets={changeSets}
               onApprove={handleApprove}
@@ -71,7 +71,7 @@ function App() {
               onTabChange={setActiveTabIndex}
             />
           </div>
-          <div style={{ width: '380px', overflow: 'auto', flexShrink: 0 }}>
+          <div style={{ display: 'none' }}>
             <TestRunner activeFile={activeFile} />
           </div>
         </div>

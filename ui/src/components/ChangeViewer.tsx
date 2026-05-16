@@ -10,6 +10,75 @@ interface ChangeViewerProps {
   onTabChange: (index: number) => void;
 }
 
+// Helper function to find character-level differences between two strings
+function getCharDiffs(oldStr: string, newStr: string): { oldHighlights: boolean[], newHighlights: boolean[] } {
+  const oldHighlights: boolean[] = new Array(oldStr.length).fill(false);
+  const newHighlights: boolean[] = new Array(newStr.length).fill(false);
+  
+  let i = 0, j = 0;
+  
+  // Find matching prefix
+  while (i < oldStr.length && j < newStr.length && oldStr[i] === newStr[j]) {
+    i++;
+    j++;
+  }
+  
+  // Find matching suffix
+  let oldEnd = oldStr.length - 1;
+  let newEnd = newStr.length - 1;
+  while (oldEnd >= i && newEnd >= j && oldStr[oldEnd] === newStr[newEnd]) {
+    oldEnd--;
+    newEnd--;
+  }
+  
+  // Mark differences
+  for (let k = i; k <= oldEnd; k++) {
+    oldHighlights[k] = true;
+  }
+  for (let k = j; k <= newEnd; k++) {
+    newHighlights[k] = true;
+  }
+  
+  return { oldHighlights, newHighlights };
+}
+
+// Helper function to render text with character-level highlights
+function renderWithHighlights(text: string, highlights: boolean[], bgColor: string) {
+  const result: JSX.Element[] = [];
+  let currentSegment = '';
+  let isHighlighted = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    if (highlights[i] !== isHighlighted) {
+      if (currentSegment) {
+        result.push(
+          isHighlighted ? (
+            <span key={i} style={{ background: bgColor }}>{currentSegment}</span>
+          ) : (
+            <span key={i}>{currentSegment}</span>
+          )
+        );
+      }
+      currentSegment = text[i];
+      isHighlighted = highlights[i];
+    } else {
+      currentSegment += text[i];
+    }
+  }
+  
+  if (currentSegment) {
+    result.push(
+      isHighlighted ? (
+        <span key={text.length} style={{ background: bgColor }}>{currentSegment}</span>
+      ) : (
+        <span key={text.length}>{currentSegment}</span>
+      )
+    );
+  }
+  
+  return result;
+}
+
 function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTabChange }: ChangeViewerProps) {
   const [analysisChangeId, setAnalysisChangeId] = useState<string | null>(null);
 
@@ -68,9 +137,143 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
     }
   };
 
+  const renderSideBySideDiff = (before: string, after: string) => {
+    const beforeLines = before.split('\n');
+    const afterLines = after.split('\n');
+    
+    // Parse diff to find corresponding lines
+    const diffLines = activeFile.diff?.split('\n') || [];
+    const removedLines: { lineNum: number; content: string }[] = [];
+    const addedLines: { lineNum: number; content: string }[] = [];
+    
+    let beforeLineNum = 0;
+    let afterLineNum = 0;
+    
+    for (const line of diffLines) {
+      if (line.startsWith('@@')) {
+        const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
+        if (match) {
+          beforeLineNum = parseInt(match[1]) - 1;
+          afterLineNum = parseInt(match[2]) - 1;
+        }
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        removedLines.push({ lineNum: beforeLineNum, content: line.substring(1) });
+        beforeLineNum++;
+      } else if (line.startsWith('+') && !line.startsWith('+++')) {
+        addedLines.push({ lineNum: afterLineNum, content: line.substring(1) });
+        afterLineNum++;
+      } else if (!line.startsWith('\\')) {
+        beforeLineNum++;
+        afterLineNum++;
+      }
+    }
+    
+    return { beforeLines, afterLines, removedLines, addedLines };
+  };
+
+  const renderCodePanel = (lines: string[], title: string, changedLines: { lineNum: number; content: string }[], isRemoved: boolean) => {
+    const changedLineNums = new Set(changedLines.map(l => l.lineNum));
+    const bgColor = isRemoved ? 'rgba(244,71,71,0.4)' : 'rgba(76,175,80,0.4)';
+    
+    // Create a map of line numbers to their highlighted content
+    const highlightMap = new Map<number, JSX.Element[]>();
+    
+    // Find pairs of removed/added lines for character-level diff
+    if (changedLines.length > 0) {
+      const { removedLines, addedLines } = renderSideBySideDiff(activeFile.before, activeFile.after);
+      
+      if (isRemoved) {
+        // Match removed lines with added lines for character diff
+        removedLines.forEach((removed, idx) => {
+          if (idx < addedLines.length) {
+            const { oldHighlights } = getCharDiffs(removed.content, addedLines[idx].content);
+            highlightMap.set(removed.lineNum, renderWithHighlights(removed.content, oldHighlights, bgColor));
+          }
+        });
+      } else {
+        // Match added lines with removed lines for character diff
+        addedLines.forEach((added, idx) => {
+          if (idx < removedLines.length) {
+            const { newHighlights } = getCharDiffs(removedLines[idx].content, added.content);
+            highlightMap.set(added.lineNum, renderWithHighlights(added.content, newHighlights, bgColor));
+          }
+        });
+      }
+    }
+    
+    return (
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: 'var(--bg-primary)'
+      }}>
+        <div style={{ 
+          fontFamily: 'var(--font-ui)',
+          fontSize: '10px',
+          fontWeight: 600,
+          letterSpacing: '1px',
+          color: 'var(--text-secondary)',
+          padding: '12px',
+          textTransform: 'uppercase',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-secondary)'
+        }}>
+          {title}
+        </div>
+        <div style={{ 
+          flex: 1, 
+          overflow: 'auto',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '12px',
+          lineHeight: '1.6'
+        }}>
+          {lines.map((line, i) => {
+            const isChanged = changedLineNums.has(i);
+            const highlightedContent = highlightMap.get(i);
+            
+            return (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  whiteSpace: 'pre',
+                  background: isChanged ? (isRemoved ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)') : 'transparent',
+                }}
+              >
+                <div
+                  style={{
+                    width: 50,
+                    flexShrink: 0,
+                    textAlign: 'right',
+                    padding: '0 12px 0 8px',
+                    userSelect: 'none',
+                    color: 'var(--text-secondary)',
+                    background: isChanged ? (isRemoved ? 'rgba(248,81,73,0.3)' : 'rgba(46,160,67,0.3)') : 'var(--bg-secondary)',
+                    borderRight: '1px solid var(--border)'
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div style={{ 
+                  flex: 1, 
+                  padding: '0 12px',
+                  color: isChanged ? (isRemoved ? '#f85149' : '#3fb950') : 'var(--text-primary)'
+                }}>
+                  {highlightedContent || line || ' '}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderUnifiedDiff = (diff: string | undefined) => {
     if (!diff) {
-      return <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>No diff available</div>;
+      return <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontFamily: 'var(--font-ui)' }}>No diff available</div>;
     }
 
     const lines = diff.split('\n');
@@ -211,19 +414,48 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
       {/* Bottom Section - Active Tab Content */}
       {activeFile && (
         <div className="tab-content">
-          <div className="split-panel">
-            <div className="panel-before">
-              <div className="panel-label">BEFORE</div>
-              <pre className="code-content">{activeFile.before || '(empty)'}</pre>
-            </div>
-            <div className="panel-after">
-              <div className="panel-label">AFTER</div>
-              <pre className="code-content">{activeFile.after || '(empty)'}</pre>
-            </div>
+          <div style={{ 
+            display: 'flex', 
+            height: '60%',
+            borderBottom: '1px solid var(--border)',
+            overflow: 'hidden'
+          }}>
+            {renderCodePanel(
+              activeFile.before.split('\n'),
+              'BEFORE',
+              renderSideBySideDiff(activeFile.before, activeFile.after).removedLines,
+              true
+            )}
+            <div style={{ width: '1px', background: 'var(--border)', flexShrink: 0 }} />
+            {renderCodePanel(
+              activeFile.after.split('\n'),
+              'AFTER',
+              renderSideBySideDiff(activeFile.before, activeFile.after).addedLines,
+              false
+            )}
           </div>
-          <div className="diff-panel">
-            <div className="panel-label">DIFF</div>
-            <div className="diff-content">{renderUnifiedDiff(activeFile.diff)}</div>
+          <div style={{ 
+            height: '40%',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            background: 'var(--bg-secondary)'
+          }}>
+            <div style={{ 
+              fontFamily: 'var(--font-ui)',
+              fontSize: '10px',
+              fontWeight: 600,
+              letterSpacing: '1px',
+              color: 'var(--text-secondary)',
+              padding: '12px',
+              textTransform: 'uppercase',
+              borderBottom: '1px solid var(--border)'
+            }}>
+              DIFF
+            </div>
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              {renderUnifiedDiff(activeFile.diff)}
+            </div>
           </div>
         </div>
       )}
