@@ -1,6 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import * as http from 'http';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/dist/server/sse.js';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 interface CachedAnalysis {
@@ -82,8 +81,6 @@ export async function startWebSocketServer(mcpServer: Server): Promise<void> {
   wss = createWebSocketServer(initialPort);
 
   // Start HTTP test server on port 8081
-  let sseTransport: SSEServerTransport | null = null;
-
   const httpServer = http.createServer(async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -94,59 +91,6 @@ export async function startWebSocketServer(mcpServer: Server): Promise<void> {
       res.writeHead(200);
       res.end();
       return;
-    }
-
-    // MCP over SSE (GET establishes stream; POST sends messages using ?sessionId=...)
-    // Bob IDE uses this to connect over HTTP without spawning a new MCP process.
-    try {
-      const url = new URL(req.url ?? '/', 'http://localhost');
-      if (url.pathname === '/mcp') {
-        if (req.method === 'GET') {
-          if (sseTransport) {
-            res.writeHead(409, { 'Content-Type': 'text/plain' });
-            res.end('MCP SSE transport already connected');
-            return;
-          }
-
-          // Route requested by user:
-          // if (req.url === '/mcp') {
-          //   const transport = new SSEServerTransport('/mcp', res);
-          //   await mcpServer.connect(transport);
-          //   return;
-          // }
-          const transport = new SSEServerTransport('/mcp', res);
-          sseTransport = transport;
-          transport.onclose = () => {
-            sseTransport = null;
-          };
-
-          await mcpServer.connect(transport);
-          return;
-        }
-
-        if (req.method === 'POST') {
-          if (!sseTransport) {
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('MCP SSE transport not connected');
-            return;
-          }
-          const sessionId = url.searchParams.get('sessionId');
-          if (!sessionId || sessionId !== sseTransport.sessionId) {
-            res.writeHead(400, { 'Content-Type': 'text/plain' });
-            res.end('Invalid or missing sessionId');
-            return;
-          }
-
-          await sseTransport.handlePostMessage(req, res);
-          return;
-        }
-
-        res.writeHead(405, { 'Content-Type': 'text/plain' });
-        res.end('Method not allowed');
-        return;
-      }
-    } catch {
-      // Fall through to other routes
     }
 
     if (req.method === 'POST' && req.url === '/trigger') {
