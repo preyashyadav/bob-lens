@@ -60,21 +60,21 @@ function App() {
         </div>
       </header>
 
-      <main className="main">
-        <ChangeViewer
-          changeSets={changeSets}
-          onApprove={handleApprove}
-          onRollback={handleRollback}
-          activeTabIndex={activeTabIndex}
-          onTabChange={setActiveTabIndex}
-        />
-        {activeFile?.fileType === 'backend' ? (
-          <TestRunner activeFile={activeFile} />
-        ) : (
-          <div style={{ padding: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
-            Frontend file selected — switch to a backend tab to run tests
+      <main className="main" style={{ overflow: 'hidden' }}>
+        <div style={{ display: 'flex', height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'auto', borderRight: '1px solid var(--border)' }}>
+            <ChangeViewer
+              changeSets={changeSets}
+              onApprove={handleApprove}
+              onRollback={handleRollback}
+              activeTabIndex={activeTabIndex}
+              onTabChange={setActiveTabIndex}
+            />
           </div>
-        )}
+          <div style={{ width: '380px', overflow: 'auto', flexShrink: 0 }}>
+            <TestRunner activeFile={activeFile} />
+          </div>
+        </div>
       </main>
     </div>
   );

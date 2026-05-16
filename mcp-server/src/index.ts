@@ -34,7 +34,8 @@ async function main() {
     await server.connect(transport);
     console.error('Bob Lens MCP Server running on STDIO');
   } else {
-    console.error('Bob Lens MCP Server awaiting SSE connection on http://localhost:8081/mcp');
+    const httpPort = process.env.HTTP_PORT || '8081';
+    console.error(`Bob Lens MCP Server awaiting SSE connection on http://localhost:${httpPort}/mcp`);
   }
 
 }

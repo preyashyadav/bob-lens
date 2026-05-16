@@ -127,10 +127,14 @@ function TestRunner({ activeFile }: TestRunnerProps) {
 
   return (
     <div className="test-runner">
-      <h2>Backend Test Runner</h2>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ fontWeight: 800, fontSize: 12, letterSpacing: 1, color: 'var(--text-secondary)' }}>
+          TEST RUNNER
+        </div>
+      </div>
       
       {/* Section 1: Test Input Form */}
-      <div className="test-input-section">
+      <div className="test-input-section" style={{ padding: 16 }}>
         <div className="form-row" style={{ gridColumn: '1 / 2' }}>
           <label htmlFor="method">Method</label>
           <select
@@ -177,7 +181,7 @@ function TestRunner({ activeFile }: TestRunnerProps) {
             value={bodyJson}
             onChange={(e) => setBodyJson(e.target.value)}
             disabled={running}
-            rows={5}
+            rows={3}
             placeholder="{}"
           />
         </div>

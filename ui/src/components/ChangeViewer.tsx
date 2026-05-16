@@ -68,28 +68,76 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
     }
   };
 
-  // Helper function to style diff lines
-  const renderDiff = (diff: string | undefined) => {
-    if (!diff) return <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>No diff available</div>;
-    
-    return diff.split('\n').map((line, i) => {
-      let color = 'var(--text-primary)';
-      let bg = 'transparent';
-      if (line.startsWith('+') && !line.startsWith('+++')) {
-        color = '#4caf50';
-        bg = 'rgba(76,175,80,0.15)';
-      } else if (line.startsWith('-') && !line.startsWith('---')) {
-        color = '#f44747';
-        bg = 'rgba(244,71,71,0.15)';
-      } else if (line.startsWith('@@')) {
-        color = 'var(--accent-blue)';
-      }
-      return (
-        <div key={i} style={{ color, background: bg, padding: '0 4px', fontFamily: 'var(--font-mono)', fontSize: '12px', lineHeight: '1.6', whiteSpace: 'pre' }}>
-          {line || ' '}
-        </div>
-      );
-    });
+  const renderUnifiedDiff = (diff: string | undefined) => {
+    if (!diff) {
+      return <div style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>No diff available</div>;
+    }
+
+    const lines = diff.split('\n');
+    return (
+      <div
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 12,
+          lineHeight: 1.5,
+          background: 'var(--bg-primary)',
+          color: 'var(--text-primary)',
+        }}
+      >
+        {lines.map((line, i) => {
+          const isAdd = line.startsWith('+') && !line.startsWith('+++');
+          const isDel = line.startsWith('-') && !line.startsWith('---');
+          const isHunk = line.startsWith('@@');
+
+          let background = 'var(--bg-primary)';
+          let color = 'var(--text-primary)';
+          let lineNumberBg = 'transparent';
+          let fontStyle: 'normal' | 'italic' = 'normal';
+
+          if (isAdd) {
+            background = 'rgba(46,160,67,0.15)';
+            color = '#3fb950';
+            lineNumberBg = 'rgba(46,160,67,0.3)';
+          } else if (isDel) {
+            background = 'rgba(248,81,73,0.15)';
+            color = '#f85149';
+            lineNumberBg = 'rgba(248,81,73,0.3)';
+          } else if (isHunk) {
+            background = 'rgba(56,139,253,0.1)';
+            color = '#79c0ff';
+            fontStyle = 'italic';
+          }
+
+          return (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                whiteSpace: 'pre',
+                background,
+                color,
+                fontStyle,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  flexShrink: 0,
+                  textAlign: 'right',
+                  padding: '0 8px 0 0',
+                  userSelect: 'none',
+                  background: lineNumberBg,
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {i + 1}
+              </div>
+              <div style={{ flex: 1, padding: '0 8px' }}>{line || ' '}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -132,8 +180,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
             />
             {getFileName(file.filePath)}
             <span className="file-type-badge">{getFileTypeBadge(file.fileType)}</span>
-            <button
-              type="button"
+            <span
               onClick={(e) => {
                 e.stopPropagation();
                 setAnalysisChangeId(latestChangeSet.id);
@@ -150,10 +197,13 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
                 padding: '2px 6px',
                 fontSize: 12,
                 lineHeight: 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                userSelect: 'none',
               }}
             >
               👁
-            </button>
+            </span>
           </button>
         ))}
       </div>
@@ -173,7 +223,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
           </div>
           <div className="diff-panel">
             <div className="panel-label">DIFF</div>
-            <pre className="diff-content">{renderDiff(activeFile.diff)}</pre>
+            <div className="diff-content">{renderUnifiedDiff(activeFile.diff)}</div>
           </div>
         </div>
       )}

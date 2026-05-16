@@ -59,33 +59,24 @@ export default function AnalysisPanel({ changeId, onClose }: AnalysisPanelProps)
     setErrorMessage(null);
     setAnalysis(null);
 
-    try {
-      const resp = await fetch(`http://localhost:8081/analysis/${changeId}`);
-      if (!resp.ok) {
-        setNotReady(true);
-        return;
-      }
-
-      const raw = await resp.text();
-      let json: AnalysisPayload;
+    // Try Bob IDE's MCP instance first (port 8083), then fallback to main server (8081)
+    const ports = ['8083', '8081'];
+    for (const port of ports) {
       try {
-        json = JSON.parse(raw) as AnalysisPayload;
+        const resp = await fetch(`http://localhost:${port}/analysis/${changeId}`);
+        const data = (await resp.json()) as AnalysisPayload;
+        if (data.success && data.analysis) {
+          setAnalysis(data.analysis);
+          setLoading(false);
+          return;
+        }
       } catch {
-        setErrorMessage('Failed to parse analysis response (non-JSON).');
-        return;
+        // try next port
       }
-
-      if (!json.success || !json.analysis) {
-        setNotReady(true);
-        return;
-      }
-
-      setAnalysis(json.analysis);
-    } catch (e: any) {
-      setErrorMessage(e?.message ? `Failed to fetch analysis: ${e.message}` : 'Failed to fetch analysis.');
-    } finally {
-      setLoading(false);
     }
+
+    setNotReady(true);
+    setLoading(false);
   }, [changeId]);
 
   useEffect(() => {

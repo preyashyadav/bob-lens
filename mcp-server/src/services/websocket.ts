@@ -223,8 +223,9 @@ export async function startWebSocketServer(mcpServer: Server): Promise<void> {
     }
   });
 
-  httpServer.listen(8081, () => {
-    console.error('HTTP test server listening on port 8081');
+  const httpPort = parseInt(process.env.HTTP_PORT || '8081', 10);
+  httpServer.listen(httpPort, () => {
+    console.error(`HTTP test server listening on port ${httpPort}`);
   });
 }
 
@@ -262,8 +263,8 @@ export function broadcastToUI(data: any): void {
   // If no clients connected, forward to main server via HTTP
   // (Skip forwarding when the call originated from /internal-broadcast to avoid loops.)
   if (!skipForward && clientCount === 0) {
-    const httpPort = process.env.HTTP_PORT || '8081';
-    fetch(`http://localhost:${httpPort}/internal-broadcast`, {
+    const mainServerPort = process.env.MAIN_HTTP_PORT || '8081';
+    fetch(`http://localhost:${mainServerPort}/internal-broadcast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: message
