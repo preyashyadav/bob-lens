@@ -105,7 +105,7 @@ The following file patterns are excluded from code reviews:
 <name>💻 Code</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens) Files
 .gitignore
 package-lock.json
 package.json
@@ -1429,7 +1429,7 @@ Now let's run the build command to check for TypeScript errors.
 **User:**
 
 [execute_command for 'npm run build --workspace=ui'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Command execution was not successful, inspect the cause and adjust as needed.
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Command execution was not successful, inspect the cause and adjust as needed.
 Exit code: 2
 Output:
 
@@ -1439,9 +1439,9 @@ Output:
 src/components/ChangeViewer.tsx(1,1): error TS6133: 'useState' is declared but its value is never read.
 npm error Lifecycle script `build` failed with error:
 npm error code 2
-npm error path /Users/preyashyadav/Documents/personal-projects/bob-lens/ui
+npm error path <PERSONAL_PROJECTS>/bob-lens/ui
 npm error workspace @bob-lens/ui@0.1.0
-npm error location /Users/preyashyadav/Documents/personal-projects/bob-lens/ui
+npm error location <PERSONAL_PROJECTS>/bob-lens/ui
 npm error command failed
 npm error command sh -c tsc && vite build
 
@@ -1573,7 +1573,7 @@ Now let's run the build again to check if all TypeScript errors are resolved.
 **User:**
 
 [execute_command for 'npm run build --workspace=ui'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Exit code: 0
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Exit code: 0
 Output:
 
 > @bob-lens/ui@0.1.0 build

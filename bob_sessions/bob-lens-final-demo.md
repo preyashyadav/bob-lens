@@ -35,7 +35,7 @@ The following file patterns are excluded from code reviews:
 <name>🛠️ Advanced</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens-demo) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens-demo) Files
 AGENTS.md
 app.js
 Card.jsx
@@ -302,8 +302,8 @@ Now I need to notify Bob Lens of the changes I made as required by the AGENTS.md
 <arguments>
 {
   "changedFiles": [
-    "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/app.js",
-    "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/Card.jsx"
+    "<PERSONAL_PROJECTS>/bob-lens-demo/app.js",
+    "<PERSONAL_PROJECTS>/bob-lens-demo/Card.jsx"
   ],
   "checkpointRef": "HEAD",
   "changeDescription": "Added applyDiscount and applyTax functions to app.js and displayed tax rate in Card.jsx"
@@ -322,13 +322,13 @@ Now I need to notify Bob Lens of the changes I made as required by the AGENTS.md
   "changeId": "change_1779023255588_48h72z3c7",
   "changes": [
     {
-      "filePath": "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/app.js",
+      "filePath": "<PERSONAL_PROJECTS>/bob-lens-demo/app.js",
       "fileType": "config",
       "before": "const express = require('express');\nconst app = express();\n\nconst products = [\n  { id: 1, name: 'Laptop', price: 1000 },\n  { id: 2, name: 'Phone', price: 500 }\n];\n\nconst getProducts = (req, res) => {\n  res.json({ success: true, data: products });\n};\n\napp.get('/products', getProducts);\n\nmodule.exports = app;\n",
       "after": "const express = require('express');\nconst app = express();\n\nconst products = [\n  { id: 1, name: 'Laptop', price: 1000 },\n  { id: 2, name: 'Phone', price: 500 }\n];\n\nconst applyDiscount = (price) => {\n  return price * 0.9;\n};\n\nconst applyTax = (discountedPrice) => {\n  return discountedPrice * 1.08;\n};\n\nconst getProducts = (req, res) => {\n  const productsWithPricing = products.map(product => ({\n    ...product,\n    price: applyTax(applyDiscount(product.price))\n  }));\n  res.json({ success: true, data: productsWithPricing });\n};\n\napp.get('/products', getProducts);\n\nmodule.exports = app;\n"
     },
     {
-      "filePath": "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/Card.jsx",
+      "filePath": "<PERSONAL_PROJECTS>/bob-lens-demo/Card.jsx",
       "fileType": "frontend",
       "before": "const Card = ({ title, price }) => {\n  return (\n    <div className=\"card\">\n      <h2>{title}</h2>\n      <p>${price}</p>\n      <button>Buy Now</button>\n    </div>\n  );\n};\n\nexport default Card;\n",
       "after": "const Card = ({ title, price }) => {\n  return (\n    <div className=\"card\">\n      <h2>{title}</h2>\n      <p>${price}</p>\n      <p><b><i>Tax rate: 8%</i></b></p>\n      <button>Buy Now</button>\n    </div>\n  );\n};\n\nexport default Card;\n"
@@ -592,8 +592,8 @@ Now I'll notify Bob Lens of these changes.
 <arguments>
 {
   "changedFiles": [
-    "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/app.js",
-    "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/Card.jsx"
+    "<PERSONAL_PROJECTS>/bob-lens-demo/app.js",
+    "<PERSONAL_PROJECTS>/bob-lens-demo/Card.jsx"
   ],
   "checkpointRef": "HEAD",
   "changeDescription": "Added additional 10% discount to pricing logic and updated Card.jsx with yellow styled text for tax rate and sale message"
@@ -612,13 +612,13 @@ Now I'll notify Bob Lens of these changes.
   "changeId": "change_1779032736518_ry9q3hsp6",
   "changes": [
     {
-      "filePath": "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/app.js",
+      "filePath": "<PERSONAL_PROJECTS>/bob-lens-demo/app.js",
       "fileType": "config",
       "before": "const express = require('express');\nconst app = express();\n\nconst products = [\n  { id: 1, name: 'Laptop', price: 1000 },\n  { id: 2, name: 'Phone', price: 500 }\n];\n\nconst getProducts = (req, res) => {\n  res.json({ success: true, data: products });\n};\n\napp.get('/products', getProducts);\n\nmodule.exports = app;\n",
       "after": "const express = require('express');\nconst app = express();\n\nconst products = [\n  { id: 1, name: 'Laptop', price: 1000 },\n  { id: 2, name: 'Phone', price: 500 }\n];\n\nconst applyDiscount = (price) => {\n  return price * 0.9;\n};\n\nconst applyTax = (discountedPrice) => {\n  return discountedPrice * 1.08;\n};\n\nconst getProducts = (req, res) => {\n  const productsWithPricing = products.map(product => ({\n    ...product,\n    price: applyTax(applyDiscount(applyDiscount(product.price)))\n  }));\n  res.json({ success: true, data: productsWithPricing });\n};\n\napp.get('/products', getProducts);\n\nmodule.exports = app;\n"
     },
     {
-      "filePath": "/Users/preyashyadav/Documents/personal-projects/bob-lens-demo/Card.jsx",
+      "filePath": "<PERSONAL_PROJECTS>/bob-lens-demo/Card.jsx",
       "fileType": "frontend",
       "before": "const Card = ({ title, price }) => {\n  return (\n    <div className=\"card\">\n      <h2>{title}</h2>\n      <p>${price}</p>\n      <button>Buy Now</button>\n    </div>\n  );\n};\n\nexport default Card;\n",
       "after": "const Card = ({ title, price }) => {\n  return (\n    <div className=\"card\">\n      <h2>{title}</h2>\n      <p>${price}</p>\n      <p><b><i style={{ color: 'yellow' }}>Tax rate: 8%</i></b></p>\n      <p><b><i style={{ color: 'yellow' }}>10% extra discount applied -- SALE</i></b></p>\n      <button>Buy Now</button>\n    </div>\n  );\n};\n\nexport default Card;\n"

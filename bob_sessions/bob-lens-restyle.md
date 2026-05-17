@@ -129,7 +129,7 @@ The following file patterns are excluded from code reviews:
 <name>💻 Code</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens) Files
 .gitignore
 package-lock.json
 package.json
@@ -2668,7 +2668,7 @@ Now let me build the UI to check for any errors.
 **User:**
 
 [execute_command for 'npm run build --workspace=ui'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Exit code: 0
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Exit code: 0
 Output:
 
 > @bob-lens/ui@0.1.0 build

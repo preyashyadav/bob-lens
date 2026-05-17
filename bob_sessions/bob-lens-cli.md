@@ -166,7 +166,7 @@ The following file patterns are excluded from code reviews:
 <name>🛠️ Advanced</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens) Files
 .gitignore
 package-lock.json
 package.json
@@ -1020,13 +1020,13 @@ IMPORTANT: When task status changes, remember to call the `update_todo_list` too
 **User:**
 
 [execute_command for 'node bin/bob-lens.mjs init'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Exit code: 0
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Exit code: 0
 Output:
 🔍 Initializing Bob Lens...
 
-📁 Workspace: /Users/preyashyadav/Documents/personal-projects/bob-lens
-🤖 Bob Shell: /Users/preyashyadav/.nvm/versions/node/v22.20.0/bin/bob
-📦 Bob Lens: /Users/preyashyadav/Documents/personal-projects/bob-lens
+📁 Workspace: <PERSONAL_PROJECTS>/bob-lens
+🤖 Bob Shell: <NVM_NODE>/v22.20.0/bin/bob
+📦 Bob Lens: <PERSONAL_PROJECTS>/bob-lens
 ✓ Created .bob/mcp.json
 ✓ Created .bobignore
 ✓ Created AGENTS.md
@@ -1155,7 +1155,7 @@ IMPORTANT: When task status changes, remember to call the `update_todo_list` too
 **User:**
 
 [execute_command for 'node bin/bob-lens.mjs start'] Result:
-Command is still running in terminal  from '/Users/preyashyadav/Documents/personal-projects/bob-lens'.
+Command is still running in terminal  from '<PERSONAL_PROJECTS>/bob-lens'.
 
 
 You will be updated on the terminal status and new output in the future.
@@ -1168,7 +1168,7 @@ sandbox/package.json,sandbox/src/services/vm-runner.ts,mcp-server/src/tools/run-
 
 # Actively Running Terminals
 ## Terminal 1 (Active)
-### Working Directory: `/Users/preyashyadav/Documents/personal-projects/bob-lens`
+### Working Directory: `<PERSONAL_PROJECTS>/bob-lens`
 ### Original command: `node bin/bob-lens.mjs start`
 ### New Output
 UI disconnected
@@ -1229,7 +1229,7 @@ Let me check the initial startup output to confirm all services started properly
 **User:**
 
 [execute_command for 'echo "Checking if services are running on expected ports..."'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Exit code: 0
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Exit code: 0
 Output:
 Checking if services are running on expected ports...
 
@@ -1242,7 +1242,7 @@ sandbox/package.json,sandbox/src/services/vm-runner.ts,mcp-server/src/tools/run-
 
 # Actively Running Terminals
 ## Terminal 1 (Active)
-### Working Directory: `/Users/preyashyadav/Documents/personal-projects/bob-lens`
+### Working Directory: `<PERSONAL_PROJECTS>/bob-lens`
 ### Original command: `node bin/bob-lens.mjs start`
 
 # Current Time
@@ -1307,7 +1307,7 @@ sandbox/package.json,sandbox/src/services/vm-runner.ts,mcp-server/src/tools/run-
 
 # Actively Running Terminals
 ## Terminal 1 (Active)
-### Working Directory: `/Users/preyashyadav/Documents/personal-projects/bob-lens`
+### Working Directory: `<PERSONAL_PROJECTS>/bob-lens`
 ### Original command: `node bin/bob-lens.mjs start`
 
 # Current Time
@@ -1354,8 +1354,8 @@ IMPORTANT: When task status changes, remember to call the `update_todo_list` too
 <arguments>
 {
   "changedFiles": [
-    "/Users/preyashyadav/Documents/personal-projects/bob-lens/bin/bob-lens.mjs",
-    "/Users/preyashyadav/Documents/personal-projects/bob-lens/package.json"
+    "<PERSONAL_PROJECTS>/bob-lens/bin/bob-lens.mjs",
+    "<PERSONAL_PROJECTS>/bob-lens/package.json"
   ],
   "checkpointRef": "HEAD",
   "changeDescription": "Created CLI for Bob Lens with init and start commands, updated package.json with bin field and prepare script"
@@ -1374,13 +1374,13 @@ IMPORTANT: When task status changes, remember to call the `update_todo_list` too
   "changeId": "change_1778956417086_eyw9z8o4z",
   "changes": [
     {
-      "filePath": "/Users/preyashyadav/Documents/personal-projects/bob-lens/bin/bob-lens.mjs",
+      "filePath": "<PERSONAL_PROJECTS>/bob-lens/bin/bob-lens.mjs",
       "fileType": "config",
       "before": "",
       "after": "#!/usr/bin/env node\n\nimport { parseArgs } from 'node:util';\nimport { execSync, spawn } from 'node:child_process';\nimport { fileURLToPath } from 'node:url';\nimport { dirname, join } from 'node:path';\nimport { existsSync, mkdirSync, writeFileSync, appendFileSync, readFileSync } from 'node:fs';\n\nconst __dirname = dirname(fileURLToPath(import.meta.url));\nconst bobLensRoot = join(__dirname, '..');\n\nconst { positionals } = parseArgs({\n  allowPositionals: true,\n  strict: false\n});\n\nconst command = positionals[0];\n\nif (!command || !['init', 'start'].includes(command)) {\n  console.error('Usage: bob-lens <init|start>');\n  process.exit(1);\n}\n\nif (command === 'init') {\n  console.log('🔍 Initializing Bob Lens...\\n');\n\n  // 1. Detect workspace path\n  const workspacePath = process.cwd();\n  console.log(`📁 Workspace: ${workspacePath}`);\n\n  // 2. Detect bob binary path\n  let bobPath;\n  try {\n    bobPath = execSync('which bob').toString().trim();\n    console.log(`🤖 Bob Shell: ${bobPath}`);\n  } catch (error) {\n    console.error('\\n❌ Bob Shell not found. Install from bob.ibm.com/download');\n    process.exit(1);\n  }\n\n  // 3. Find bob-lens installation path\n  const bobLensMcpPath = join(bobLensRoot, 'mcp-server/dist/index.js');\n  console.log(`📦 Bob Lens: ${bobLensRoot}`);\n\n  // 4. Create .bob/ directory if not exists\n  const bobDir = join(workspacePath, '.bob');\n  if (!existsSync(bobDir)) {\n    mkdirSync(bobDir, { recursive: true });\n    console.log('✓ Created .bob/ directory');\n  }\n\n  // 5. Write .bob/mcp.json\n  const mcpConfig = {\n    mcpServers: {\n      'bob-lens': {\n        command: 'node',\n        args: [bobLensMcpPath],\n        env: {\n          WORKSPACE_PATH: workspacePath,\n          BOB_PATH: bobPath,\n          WEBSOCKET_PORT: '8082',\n          HTTP_PORT: '8083',\n          MAIN_HTTP_PORT: '8081'\n        },\n        alwaysAllow: ['notify_change', 'ask_bob', 'run_test']\n      }\n    }\n  };\n\n  const mcpJsonPath = join(bobDir, 'mcp.json');\n  writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2));\n  console.log('✓ Created .bob/mcp.json');\n\n  // 6. Append to .bobignore\n  const bobignorePath = join(workspacePath, '.bobignore');\n  const bobignoreContent = '\\n.bob-lens/\\nbob_sessions/\\n';\n  \n  if (existsSync(bobignorePath)) {\n    const existing = readFileSync(bobignorePath, 'utf-8');\n    if (!existing.includes('.bob-lens/') || !existing.includes('bob_sessions/')) {\n      appendFileSync(bobignorePath, bobignoreContent);\n      console.log('✓ Updated .bobignore');\n    }\n  } else {\n    writeFileSync(bobignorePath, bobignoreContent.trim() + '\\n');\n    console.log('✓ Created .bobignore');\n  }\n\n  // 7. Write AGENTS.md if not exists\n  const agentsMdPath = join(workspacePath, 'AGENTS.md');\n  if (!existsSync(agentsMdPath)) {\n    const agentsMdContent = `# Bob Lens\n\nAfter completing ANY task that modifies files, you MUST call\nthe notify_change MCP tool with:\n- changedFiles: array of absolute paths of all modified files\n- checkpointRef: \"HEAD\"\n- changeDescription: one sentence describing what changed\n\nThis is required after every task without exception.\n`;\n    writeFileSync(agentsMdPath, agentsMdContent);\n    console.log('✓ Created AGENTS.md');\n  }\n\n  // 8. Create bob_sessions/ directory if not exists\n  const sessionsDir = join(workspacePath, 'bob_sessions');\n  if (!existsSync(sessionsDir)) {\n    mkdirSync(sessionsDir, { recursive: true });\n    console.log('✓ Created bob_sessions/ directory');\n  }\n\n  // 9. Print success message\n  console.log('\\n✅ Bob Lens initialized successfully!\\n');\n  console.log('Next steps:');\n  console.log('1. Run: bob-lens start');\n  console.log('2. Open IBM Bob IDE in this project');\n  console.log('3. Go to MCP settings and restart bob-lens server');\n  console.log('4. Enable MCP auto-approve in Bob IDE settings');\n  console.log('5. Open http://localhost:3333 in your browser\\n');\n  console.log('Bob Lens will now visualize changes automatically when Bob modifies files.\\n');\n\n} else if (command === 'start') {\n  // 1. Check if .bob/mcp.json exists\n  const workspacePath = process.cwd();\n  const mcpJsonPath = join(workspacePath, '.bob/mcp.json');\n  \n  if (!existsSync(mcpJsonPath)) {\n    console.error('❌ Bob Lens not initialized. Run: bob-lens init');\n    process.exit(1);\n  }\n\n  // 2. Get bobLensRoot\n  const bobLensMcpPath = join(bobLensRoot, 'mcp-server/dist/index.js');\n  const bobLensSandboxPath = join(bobLensRoot, 'sandbox/dist/index.js');\n  const bobLensUiPath = join(bobLensRoot, 'ui');\n  const viteBinPath = join(bobLensRoot, 'node_modules/.bin/vite');\n\n  // 3. Spawn three processes concurrently\n  const processes = [\n    {\n      name: 'MCP Server',\n      cmd: 'node',\n      args: [bobLensMcpPath],\n      env: { ...process.env, WEBSOCKET_PORT: '8080', HTTP_PORT: '8081' }\n    },\n    {\n      name: 'UI',\n      cmd: 'node',\n      args: [viteBinPath, '--port', '3333', bobLensUiPath],\n      env: { ...process.env }\n    },\n    {\n      name: 'Sandbox',\n      cmd: 'node',\n      args: [bobLensSandboxPath],\n      env: { ...process.env }\n    }\n  ];\n\n  console.log('🔍 Bob Lens starting...\\n');\n  console.log('● MCP Server    → port 8080');\n  console.log('● UI            → http://localhost:3333');\n  console.log('● Sandbox       → port 3334\\n');\n  console.log('Open http://localhost:3333 in your browser.');\n  console.log('Make changes with IBM Bob IDE to see them visualized.\\n');\n  console.log('Press Ctrl+C to stop.\\n');\n\n  processes.forEach(({ name, cmd, args, env }) => {\n    const proc = spawn(cmd, args, { env, stdio: 'inherit' });\n    proc.on('error', (err) => console.error(`${name} error:`, err.message));\n  });\n\n  // 4. Open browser automatically after 3 seconds\n  setTimeout(() => {\n    const open = process.platform === 'darwin' ? 'open' : \n                 process.platform === 'win32' ? 'start' : 'xdg-open';\n    try {\n      spawn(open, ['http://localhost:3333'], { detached: true, stdio: 'ignore' }).unref();\n    } catch (err) {\n      // Silently fail if browser can't be opened\n    }\n  }, 3000);\n}\n\n// Made with Bob\n"
     },
     {
-      "filePath": "/Users/preyashyadav/Documents/personal-projects/bob-lens/package.json",
+      "filePath": "<PERSONAL_PROJECTS>/bob-lens/package.json",
       "fileType": "config",
       "before": "{\n  \"name\": \"bob-lens\",\n  \"version\": \"0.1.0\",\n  \"private\": true,\n  \"description\": \"Local developer tool that visualizes AI-generated code changes from IBM Bob IDE\",\n  \"workspaces\": [\n    \"mcp-server\",\n    \"ui\",\n    \"sandbox\",\n    \"types\"\n  ],\n  \"scripts\": {\n    \"install:all\": \"npm install && npm install --workspace=mcp-server && npm install --workspace=ui && npm install --workspace=sandbox\",\n    \"dev:mcp\": \"npm run dev --workspace=mcp-server\",\n    \"dev:ui\": \"npm run dev --workspace=ui\",\n    \"dev:sandbox\": \"npm run dev --workspace=sandbox\",\n    \"dev\": \"concurrently \\\"npm run dev:mcp\\\" \\\"npm run dev:ui\\\" \\\"npm run dev:sandbox\\\"\",\n    \"build:all\": \"npm run build --workspace=mcp-server && npm run build --workspace=ui && npm run build --workspace=sandbox\",\n    \"clean\": \"rm -rf node_modules mcp-server/node_modules ui/node_modules sandbox/node_modules types/node_modules\"\n  },\n  \"devDependencies\": {\n    \"concurrently\": \"^8.2.2\",\n    \"typescript\": \"^5.3.3\"\n  }\n}",
       "after": "{\n  \"name\": \"bob-lens\",\n  \"version\": \"0.1.0\",\n  \"private\": false,\n  \"description\": \"Local developer tool that visualizes AI-generated code changes from IBM Bob IDE\",\n  \"bin\": {\n    \"bob-lens\": \"./bin/bob-lens.mjs\"\n  },\n  \"workspaces\": [\n    \"mcp-server\",\n    \"ui\",\n    \"sandbox\",\n    \"types\"\n  ],\n  \"scripts\": {\n    \"prepare\": \"npm run build:all\",\n    \"install:all\": \"npm install && npm install --workspace=mcp-server && npm install --workspace=ui && npm install --workspace=sandbox\",\n    \"dev:mcp\": \"npm run dev --workspace=mcp-server\",\n    \"dev:ui\": \"npm run dev --workspace=ui\",\n    \"dev:sandbox\": \"npm run dev --workspace=sandbox\",\n    \"dev\": \"concurrently \\\"npm run dev:mcp\\\" \\\"npm run dev:ui\\\" \\\"npm run dev:sandbox\\\"\",\n    \"build:all\": \"npm run build --workspace=mcp-server && npm run build --workspace=ui && npm run build --workspace=sandbox\",\n    \"clean\": \"rm -rf node_modules mcp-server/node_modules ui/node_modules sandbox/node_modules types/node_modules\"\n  },\n  \"devDependencies\": {\n    \"concurrently\": \"^8.2.2\",\n    \"typescript\": \"^5.3.3\"\n  }\n}"
@@ -1396,7 +1396,7 @@ sandbox/package.json,sandbox/src/services/vm-runner.ts,mcp-server/src/tools/run-
 
 # Actively Running Terminals
 ## Terminal 1 (Active)
-### Working Directory: `/Users/preyashyadav/Documents/personal-projects/bob-lens`
+### Working Directory: `<PERSONAL_PROJECTS>/bob-lens`
 ### Original command: `node bin/bob-lens.mjs start`
 
 # Current Time

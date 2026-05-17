@@ -51,7 +51,7 @@ The following file patterns are excluded from code reviews:
 <name>💻 Code</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens) Files
 .gitignore
 package-lock.json
 package.json
@@ -917,7 +917,7 @@ IMPORTANT: When task status changes, remember to call the `update_todo_list` too
 **User:**
 
 [execute_command for 'npm run build --workspace=mcp-server'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Exit code: 0
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Exit code: 0
 Output:
 
 > @bob-lens/mcp-server@0.1.0 build

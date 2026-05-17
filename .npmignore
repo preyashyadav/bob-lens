@@ -13,7 +13,21 @@
 !/ui/dist/
 !/ui/dist/**
 !/ui/index.html
+!/docs/screenshots/
+!/docs/screenshots/**
 
 node_modules/
 package-lock.json
 *.log
+.env*
+
+# Explicitly exclude sources (dist-only publish)
+mcp-server/src/
+ui/src/
+sandbox/src/
+mcp-server/node_modules/
+ui/node_modules/
+sandbox/node_modules/
+mcp-server/tsconfig.json
+ui/tsconfig.json
+sandbox/tsconfig.json

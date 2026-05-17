@@ -1,7 +1,12 @@
 node_modules/
+mcp-server/node_modules/
+ui/node_modules/
+sandbox/node_modules/
 build/
-.env
+.env.*
 .env.local
+mcp-server/.env
+.env
 *.log
 .DS_Store
 coverage/
@@ -11,4 +16,7 @@ coverage/
 
 # Made with Bob
 .bob/mcp.json
-.bob/mcp.json
+
+# Local env files (never commit)
+ui/.env
+sandbox/.env

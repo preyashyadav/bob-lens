@@ -39,7 +39,7 @@ The following file patterns are excluded from code reviews:
 <name>📝 Plan</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens) Files
 bob_sessions/
 You have not created a todo list yet. Create one with `update_todo_list` if your task is complicated or involves multiple steps.
 </environment_details>
@@ -156,7 +156,7 @@ The build output showed:
 
 New problems detected after saving the file:
 sandbox/src/services/screenshot.ts
-- [ts Error] 2 | import type { ScreenshotOptions } from '../../../types/sandbox.js'; : File '/Users/preyashyadav/Documents/personal-projects/bob-lens/types/sandbox.ts' is not under 'rootDir' '/Users/preyashyadav/Documents/personal-projects/bob-lens/sandbox/src'. 'rootDir' is expected to contain all source files.
+- [ts Error] 2 | import type { ScreenshotOptions } from '../../../types/sandbox.js'; : File '<PERSONAL_PROJECTS>/bob-lens/types/sandbox.ts' is not under 'rootDir' '<PERSONAL_PROJECTS>/bob-lens/sandbox/src'. 'rootDir' is expected to contain all source files.
 
 sandbox/src/routes/execute.ts
 - [ts Error] 3 | import { captureScreenshot } from '../services/screenshot.js'; : Cannot find module '../services/screenshot.js' or its corresponding type declarations.
@@ -976,7 +976,7 @@ Perfect! Now all three fixes are complete. Let me run the build command to verif
 **User:**
 
 [execute_command for 'npm run build:all'] Result:
-Command executed in terminal  within working directory '/Users/preyashyadav/Documents/personal-projects/bob-lens'. Exit code: 0
+Command executed in terminal  within working directory '<PERSONAL_PROJECTS>/bob-lens'. Exit code: 0
 Output:
 
 > bob-lens@0.1.0 build:all

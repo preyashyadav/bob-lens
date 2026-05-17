@@ -41,7 +41,7 @@ The following file patterns are excluded from code reviews:
 <name>💻 Code</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/demo-project) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/demo-project) Files
 .DS_Store
 AGENTS.md
 .bob/
@@ -587,7 +587,7 @@ Let me ask about the correct mode to access MCP tools.
 Use the current mode. You don't need to switch modes. 
 Just call the notify_change tool directly - it's already 
 available as an MCP tool. Call it now with:
-- changedFiles: ["/Users/preyashyadav/Documents/personal-projects/demo-project/src/api/card.controller.js", "/Users/preyashyadav/Documents/personal-projects/demo-project/src/components/Card.jsx"]
+- changedFiles: ["<PERSONAL_PROJECTS>/demo-project/src/api/card.controller.js", "<PERSONAL_PROJECTS>/demo-project/src/components/Card.jsx"]
 - checkpointRef: "HEAD"  
 - changeDescription: "Added status field to cards with visual badge in Card component"
 </answer>
@@ -625,7 +625,7 @@ You have not created a todo list yet. Create one with `update_todo_list` if your
 **Assistant:**
 
 <notify_change>
-<changedFiles>["/Users/preyashyadav/Documents/personal-projects/demo-project/src/api/card.controller.js", "/Users/preyashyadav/Documents/personal-projects/demo-project/src/components/Card.jsx"]</changedFiles>
+<changedFiles>["<PERSONAL_PROJECTS>/demo-project/src/api/card.controller.js", "<PERSONAL_PROJECTS>/demo-project/src/components/Card.jsx"]</changedFiles>
 <checkpointRef>HEAD</checkpointRef>
 <changeDescription>Added status field to cards with visual badge in Card component</changeDescription>
 </notify_change>

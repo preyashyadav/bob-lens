@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 import { spawn } from 'child_process';
+import * as path from 'node:path';
 
 export interface BobAnalysis {
   summary: string;
@@ -108,13 +109,19 @@ Keep labels under 5 words. Trace full flow from UI to database.`;
       }, 60000);
 
       // Spawn BobShell as a child process
-      const BOB_PATH = process.env.BOB_PATH || '/Users/preyashyadav/.nvm/versions/node/v22.20.0/bin/bob';
+      const BOB_PATH = process.env.BOB_PATH || 'bob';
+
+      const currentPath = process.env.PATH ?? '';
+      const extraPaths = ['/usr/local/bin', '/opt/homebrew/bin'];
+      const mergedPath = Array.from(
+        new Set([...currentPath.split(path.delimiter), ...extraPaths].filter(Boolean))
+      ).join(path.delimiter);
 
       const bobProcess = spawn(BOB_PATH, ['-p', prompt, '--output-format', 'stream-json'], {
         cwd: workspacePath,
         env: {
           ...process.env,
-          PATH: `${process.env.PATH}:/Users/preyashyadav/.nvm/versions/node/v22.20.0/bin:/usr/local/bin:/opt/homebrew/bin`
+          PATH: mergedPath
         },
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: false

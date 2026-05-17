@@ -33,7 +33,7 @@ The following file patterns are excluded from code reviews:
 <name>💻 Code</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/demo-project) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/demo-project) Files
 .DS_Store
 AGENTS.md
 .bob/

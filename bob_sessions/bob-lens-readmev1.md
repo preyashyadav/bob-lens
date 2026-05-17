@@ -142,7 +142,7 @@ The following file patterns are excluded from code reviews:
 <name>💻 Code</name>
 
 
-# Current Workspace Directory (/Users/preyashyadav/Documents/personal-projects/bob-lens) Files
+# Current Workspace Directory (<PERSONAL_PROJECTS>/bob-lens) Files
 .gitignore
 package-lock.json
 package.json
@@ -1915,13 +1915,13 @@ You have not created a todo list yet. Create one with `update_todo_list` if your
  74 |       }, 60000);
  75 | 
  76 |       // Spawn BobShell as a child process
- 77 |       const BOB_PATH = process.env.BOB_PATH || '/Users/preyashyadav/.nvm/versions/node/v22.20.0/bin/bob';
+ 77 |       const BOB_PATH = process.env.BOB_PATH || '<NVM_NODE>/v22.20.0/bin/bob';
  78 | 
  79 |       const bobProcess = spawn(BOB_PATH, ['-p', prompt, '--output-format', 'stream-json'], {
  80 |         cwd: workspacePath,
  81 |         env: {
  82 |           ...process.env,
- 83 |           PATH: `${process.env.PATH}:/Users/preyashyadav/.nvm/versions/node/v22.20.0/bin:/usr/local/bin:/opt/homebrew/bin`
+ 83 |           PATH: `${process.env.PATH}:<NVM_NODE>/v22.20.0/bin:/usr/local/bin:/opt/homebrew/bin`
  84 |         },
  85 |         stdio: ['pipe', 'pipe', 'pipe'],
  86 |         shell: false

@@ -2,7 +2,7 @@
 import { trackChange } from './mcp-server/dist/services/change-tracker.js';
 
 const result = await trackChange({
-  changedFiles: ['/Users/preyashyadav/Documents/personal-projects/demo-project/src/components/Card.jsx'],
+  changedFiles: ['src/components/Card.jsx'],
   checkpointRef: 'HEAD',
   description: 'Added delete button to Card'
 });

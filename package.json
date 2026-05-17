@@ -2,10 +2,31 @@
   "name": "bob-lens",
   "version": "0.1.0",
   "private": false,
-  "description": "Local developer tool that visualizes AI-generated code changes from IBM Bob IDE",
+  "description": "Visual change intelligence for IBM Bob — see what AI changed, understand it, approve it.",
+  "main": "bin/bob-lens.mjs",
   "bin": {
     "bob-lens": "./bin/bob-lens.mjs"
   },
+  "files": [
+    "bin/",
+    "mcp-server/dist/",
+    "sandbox/dist/",
+    "ui/dist/",
+    "ui/index.html",
+    "docs/screenshots/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "ibm-bob",
+    "mcp",
+    "developer-tools",
+    "code-visualization",
+    "ai-coding",
+    "code-review"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.5.0",
     "axios": "^1.6.5",
@@ -24,7 +45,11 @@
     "ws": "^8.16.0",
     "zod": "^3.22.4"
   },
-  "author": "Preyash Yadav <www.preyashyadav.com>",
-  "homepage": "https://www.preyashyadav.com",
-  "repository": "https://github.com/preyashyadav/bob-lens"
+  "author": "Preyash Yadav <https://www.preyashyadav.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/preyashyadav/bob-lens",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/preyashyadav/bob-lens.git"
+  }
 }
