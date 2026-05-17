@@ -1,4 +1,4 @@
-# Bob Lens 🔍
+# Bob Lens
 
 > See what IBM Bob changed. Understand it. Approve it with confidence.
 
@@ -285,6 +285,6 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Made with Bob** 🤖
+**Made with Bob**
 
 *Turn idea into impact faster.*

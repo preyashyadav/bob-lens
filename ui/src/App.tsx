@@ -50,11 +50,62 @@ function App() {
 
   return (
     <div className="app">
-      <header className="header">
-        <h1>Bob Lens</h1>
-        <div className="status">
-          <span className={`status-indicator ${connected ? 'connected' : 'disconnected'}`}>
-            <span className="status-dot"></span>
+      <header
+        style={{
+          background: '#171717',
+          borderBottom: '1px solid #353b41',
+          padding: '0 24px',
+          height: '48px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <img
+            src="/bob-lens-logo.png"
+            alt="Bob Lens"
+            style={{ width: 18, height: 18, display: 'block' }}
+          />
+          <span
+            style={{
+              fontFamily: 'IBM Plex Sans',
+              fontWeight: 600,
+              fontSize: '14px',
+              color: '#ffffff',
+              letterSpacing: '0.5px',
+            }}
+          >
+            Bob Lens
+          </span>
+          <span
+            style={{
+              fontSize: '11px',
+              color: '#697077',
+              fontFamily: 'IBM Plex Sans',
+              fontWeight: 300,
+            }}
+          >
+            Visual Change Intelligence
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: connected ? '#42be65' : '#fa4d56',
+              display: 'inline-block',
+            }}
+          />
+          <span
+            style={{
+              fontSize: '11px',
+              color: '#697077',
+              fontFamily: 'IBM Plex Sans',
+            }}
+          >
             {connected ? 'Connected' : 'Disconnected'}
           </span>
         </div>

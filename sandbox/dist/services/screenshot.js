@@ -1,118 +1,175 @@
 import puppeteer from 'puppeteer';
-const PUPPETEER_HEADLESS = process.env.PUPPETEER_HEADLESS !== 'false';
-const escapeHtml = (input) => input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const buildHtml = (code, label, testInputs) => {
-    // Extract component visual structure from JSX (heuristic, offline-safe).
-    // This intentionally does not execute React/Babel in the sandbox.
-    const hasButton = code.includes('button') || code.includes('Button');
-    const hasTitle = code.includes('title') || code.includes('Title');
-    const hasDelete = code.includes('delete') || code.includes('Delete');
-    const propKeys = testInputs && typeof testInputs === 'object' ? Object.keys(testInputs).slice(0, 6) : [];
-    const labelText = label ? escapeHtml(label) : 'Component';
-    return `<!DOCTYPE html>
+async function renderComponent(code, componentName) {
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security'],
+    });
+    try {
+        const page = await browser.newPage();
+        await page.setViewport({ width: 600, height: 400 });
+        // Clean the JSX code — remove import/export statements
+        const cleanCode = code
+            .replace(/^import\s+.*?;?\s*$/gm, '')
+            .replace(/^export\s+default\s+/gm, '')
+            .replace(/^export\s+/gm, '')
+            .trim();
+        const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { margin: 0; padding: 20px; background: #f5f5f5; font-family: system-ui; }
-    .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 300px; }
-    .card-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-    .card-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; }
-    .card-footer { display: flex; gap: 8px; }
-    .btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; }
-    .btn-primary { background: #007acc; color: white; }
-    .btn-danger { background: #f44747; color: white; }
-    .badge { display: inline-block; font-size: 11px; color: #666; background: #eee; padding: 2px 6px; border-radius: 999px; margin-bottom: 10px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f5f5f5;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      color: #333;
+    }
+    /* Common component styles */
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-width: 320px;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      margin: 4px 4px 4px 0;
+    }
+    h1, h2, h3 { margin-bottom: 8px; }
+    p { margin-bottom: 8px; color: #666; }
+    input, select, textarea {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 100%;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
   </style>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">${labelText} · Preview (offline)</div>
-    ${hasTitle ? '<div class="card-title">Sample Card Title</div>' : ''}
-    <div class="card-subtitle">Sample subtitle text</div>
-    ${propKeys.length > 0 ? `<div class="card-subtitle">Props: ${escapeHtml(propKeys.join(', '))}${propKeys.length === 6 ? ', …' : ''}</div>` : ''}
-    ${hasButton ? `<div class="card-footer">
-      <button class="btn btn-primary">View Details</button>
-      ${hasDelete ? '<button class="btn btn-danger">Delete</button>' : ''}
-    </div>` : ''}
-  </div>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+    ${cleanCode}
+
+    // Try to find and render the component
+    try {
+      const Component = typeof ${componentName} !== 'undefined'
+        ? ${componentName}
+        : (typeof exports !== 'undefined' && exports.default)
+          ? exports.default
+          : null;
+
+      if (Component) {
+        // Generate reasonable default props based on common patterns
+        const defaultProps = {
+          title: 'Sample Title',
+          name: 'Sample Name',
+          subtitle: 'Sample subtitle text',
+          description: 'A sample description for preview',
+          label: 'Label',
+          value: 'Value',
+          text: 'Sample text',
+          role: 'user',
+          email: 'user@example.com',
+          price: 99,
+          count: 42,
+          verified: true,
+          active: true,
+          disabled: false,
+          onClick: () => {},
+          onDelete: () => {},
+          onSubmit: () => {},
+          onChange: () => {},
+          children: 'Content'
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(Component, defaultProps));
+      } else {
+        document.getElementById('root').innerHTML =
+          '<div style="color:#666;padding:16px">Component could not be rendered</div>';
+      }
+    } catch(e) {
+      document.getElementById('root').innerHTML =
+        '<div style="color:#f44747;padding:16px;font-family:monospace;font-size:12px">Render error: ' + e.message + '</div>';
+    }
+  </script>
 </body>
 </html>`;
-};
-export async function captureScreenshot(code, testInputs, options = {}) {
-    let browser;
-    try {
-        browser = await puppeteer.launch({
-            headless: PUPPETEER_HEADLESS,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
-        const page = await browser.newPage();
-        // Set viewport size
-        await page.setViewport({
-            width: options.width || 1280,
-            height: options.height || 720,
-        });
-        // Offline-safe rendering: plain HTML representation (no CDN, no React execution).
-        await page.setContent(buildHtml(code, 'App', testInputs), { waitUntil: 'load', timeout: 15000 });
-        // Wait for React to render (using setTimeout instead of deprecated waitForTimeout)
-        await new Promise(resolve => setTimeout(resolve, options.waitTime || 1000));
-        // Take screenshot
-        const screenshot = await page.screenshot({
-            encoding: 'base64',
-            fullPage: options.fullPage || false,
-        });
+        await page.setContent(html, { waitUntil: 'networkidle0', timeout: 20000 });
+        // Wait for React to render
+        await page.waitForSelector('#root > *', { timeout: 8000 }).catch(() => { });
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Take screenshot of just the rendered component
+        const rootElement = await page.$('#root');
+        let screenshot;
+        if (rootElement) {
+            const box = await rootElement.boundingBox();
+            if (box && box.height > 0) {
+                screenshot = (await page.screenshot({
+                    encoding: 'base64',
+                    clip: {
+                        x: Math.max(0, box.x - 8),
+                        y: Math.max(0, box.y - 8),
+                        width: Math.min(600, box.width + 16),
+                        height: Math.min(400, box.height + 16),
+                    },
+                }));
+            }
+            else {
+                screenshot = (await page.screenshot({ encoding: 'base64' }));
+            }
+        }
+        else {
+            screenshot = (await page.screenshot({ encoding: 'base64' }));
+        }
         return screenshot;
+    }
+    finally {
+        await browser.close();
+    }
+}
+export async function captureScreenshot(code, _testInputs, _options = {}) {
+    try {
+        return await renderComponent(code, 'App');
     }
     catch (error) {
         console.error('Screenshot capture failed:', error);
         return null;
     }
-    finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
 }
 export async function renderComponentScreenshots(beforeCode, afterCode, componentName) {
-    const renderScreenshot = async (html) => {
-        const browser = await puppeteer.launch({
-            headless: PUPPETEER_HEADLESS,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-        try {
-            const page = await browser.newPage();
-            await page.setViewport({ width: 800, height: 600 });
-            await page.setContent(html, { waitUntil: 'load', timeout: 15000 });
-            const screenshot = await page.screenshot({
-                encoding: 'base64',
-                clip: { x: 0, y: 0, width: 800, height: 300 }
-            });
-            return screenshot;
-        }
-        finally {
-            await browser.close();
-        }
-    };
     try {
-        const beforeHtml = buildHtml(beforeCode, componentName);
-        const afterHtml = buildHtml(afterCode, componentName);
-        const [beforeScreenshot, afterScreenshot] = await Promise.all([
-            renderScreenshot(beforeHtml),
-            renderScreenshot(afterHtml)
+        const [before, after] = await Promise.all([
+            renderComponent(beforeCode, componentName),
+            renderComponent(afterCode, componentName),
         ]);
-        return {
-            before: beforeScreenshot,
-            after: afterScreenshot
-        };
+        return { before, after };
     }
     catch (error) {
-        console.error('Component screenshot rendering failed:', error);
         return {
             before: '',
             after: '',
-            error: error.message || 'Failed to render component screenshots'
+            error: `Screenshot failed: ${error.message}`,
         };
     }
 }
-// Made with Bob
 //# sourceMappingURL=screenshot.js.map

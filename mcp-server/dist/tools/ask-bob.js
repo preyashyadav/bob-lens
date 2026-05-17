@@ -15,7 +15,10 @@ export async function askBobHandler(args) {
                         summary: analysis.summary,
                         explanation: analysis.explanation,
                         risks: analysis.risks,
-                        verdict: analysis.verdict
+                        verdict: analysis.verdict,
+                        tokens: analysis.tokens,
+                        cost: analysis.cost,
+                        durationMs: analysis.durationMs
                     })
                 }],
             analysis,

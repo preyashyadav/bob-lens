@@ -122,7 +122,10 @@ export function setupMCPTools(server) {
                             summary: parsed.summary || '',
                             explanation: parsed.explanation || '',
                             risks: parsed.risks || [],
-                            verdict: parsed.verdict || 'review'
+                            verdict: parsed.verdict || 'review',
+                            tokens: typeof parsed.tokens === 'number' ? parsed.tokens : undefined,
+                            cost: typeof parsed.cost === 'number' ? parsed.cost : undefined,
+                            durationMs: typeof parsed.durationMs === 'number' ? parsed.durationMs : undefined
                         });
                         console.error(`Analysis cached for ${notifyData.changeId}`);
                     }
@@ -146,7 +149,10 @@ export function setupMCPTools(server) {
                         summary: parsed.summary || '',
                         explanation: parsed.explanation || '',
                         risks: parsed.risks || [],
-                        verdict: parsed.verdict || 'review'
+                        verdict: parsed.verdict || 'review',
+                        tokens: typeof parsed.tokens === 'number' ? parsed.tokens : undefined,
+                        cost: typeof parsed.cost === 'number' ? parsed.cost : undefined,
+                        durationMs: typeof parsed.durationMs === 'number' ? parsed.durationMs : undefined
                     });
                     console.error(`Cached analysis for changeId: ${parsed.changeId}`);
                 }

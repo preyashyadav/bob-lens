@@ -13,6 +13,9 @@ export interface BobAnalysis {
   explanation: string;
   risks: string[];
   verdict: 'safe' | 'review' | 'risky';
+  tokens?: number;
+  cost?: number;
+  durationMs?: number;
 }
 
 export interface FlowNode {
@@ -22,6 +25,9 @@ export interface FlowNode {
   line: number | null;
   type: 'component' | 'function' | 'route' | 'database' | 'return';
   status: 'unchanged' | 'new' | 'modified' | 'removed';
+  input?: string;
+  output?: string;
+  description?: string;
 }
 
 export interface Edge {
@@ -62,6 +68,34 @@ Return ONLY this JSON, no other text:
   "risks": ["potential issue 1"],
   "verdict": "safe"
 }
+
+For EVERY node, you MUST also provide these three fields:
+
+"input": What data or values does this node receive as input? Be specific.
+  - For functions: parameter names and types, e.g. "sum: number, constant: number = 10"
+  - For routes: HTTP method and request shape, e.g. "POST /login { email: string, password: string }"
+  - For database nodes: query type and parameters, e.g. "SELECT WHERE id = :userId"
+  - For components: props, e.g. "{ name: string, role: string, verified?: boolean }"
+  - If unchanged from previous node's output, say "receives output from [previous node label]"
+
+"output": What does this node return or pass to the next node?
+  - For functions: return type and example value, e.g. "number (e.g. 225, the squared result)"
+  - For routes: response shape, e.g. "{ success: true, token: 'jwt_string' }"
+  - For database nodes: what data comes back, e.g. "User record or null"
+  - For components: rendered JSX description, e.g. "Card div with title, subtitle, delete button"
+
+"description": One plain English sentence of exactly what this node does.
+  - Be specific about the operation, not generic.
+  - BAD: "processes the data"
+  - GOOD: "subtracts constant 10 from the sum and passes result to exponent function"
+  - BAD: "handles the request"
+  - GOOD: "validates JWT token from Authorization header, returns 401 if invalid or expired"
+
+For backward edges (when a function calls a previous function, e.g. recursion):
+  Include in edges_before/edges_after normally. Example: {"from": "a4", "to": "a1"} means a4 calls back to a1.
+  This happens in loops, recursion, or retry logic.
+
+IMPORTANT: Do not leave input/output/description empty. Every node must have all three.
 
 Node types: component, function, route, database, return
 Status values: unchanged, new, modified, removed
@@ -118,10 +152,31 @@ Keep labels under 5 words. Trace full flow from UI to database.`;
           // Parse stdout lines to find tool_result
           const lines = stdoutData.split('\n').filter(line => line.trim());
           let analysisJson: string | null = null;
+          let totalTokens: number | undefined;
+          let sessionCost: number | undefined;
+          let durationMs: number | undefined;
 
           for (const line of lines) {
             try {
               const parsed = JSON.parse(line);
+              // BobShell emits a final JSON line where type === 'result' containing stats.
+              if (parsed?.type === 'result') {
+                const stats =
+                  parsed?.stats ??
+                  parsed?.data?.stats ??
+                  parsed?.result?.stats ??
+                  parsed?.output?.stats;
+
+                if (stats) {
+                  const maybeTokens = Number(stats.total_tokens);
+                  const maybeCost = Number(stats.session_costs);
+                  const maybeDuration = Number(stats.duration_ms);
+
+                  if (Number.isFinite(maybeTokens)) totalTokens = maybeTokens;
+                  if (Number.isFinite(maybeCost)) sessionCost = maybeCost;
+                  if (Number.isFinite(maybeDuration)) durationMs = maybeDuration;
+                }
+              }
               if (parsed.type === 'tool_result' && parsed.output) {
                 analysisJson = parsed.output;
                 break;
@@ -146,6 +201,9 @@ Keep labels under 5 words. Trace full flow from UI to database.`;
 
           // Parse as BobAnalysis
           const analysis: BobAnalysis = JSON.parse(cleanJson);
+          analysis.tokens = totalTokens;
+          analysis.cost = sessionCost;
+          analysis.durationMs = durationMs;
           resolve(analysis);
         } catch (error) {
           reject(new Error(`Failed to parse BobShell output: ${error instanceof Error ? error.message : String(error)}`));

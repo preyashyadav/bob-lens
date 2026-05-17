@@ -1,5 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import * as http from 'http';
+import * as fs from 'fs';
+import * as path from 'path';
 let wss;
 // In-memory cache for analysis results
 export const analysisCache = new Map();
@@ -98,7 +100,10 @@ export async function startWebSocketServer(mcpServer) {
                                             summary: parsed.summary || '',
                                             explanation: parsed.explanation || '',
                                             risks: parsed.risks || [],
-                                            verdict: parsed.verdict || 'review'
+                                            verdict: parsed.verdict || 'review',
+                                            tokens: typeof parsed.tokens === 'number' ? parsed.tokens : undefined,
+                                            cost: typeof parsed.cost === 'number' ? parsed.cost : undefined,
+                                            durationMs: typeof parsed.durationMs === 'number' ? parsed.durationMs : undefined,
                                         });
                                         console.error(`Bob analysis cached for changeId: ${changeId}`);
                                     }
@@ -138,6 +143,19 @@ export async function startWebSocketServer(mcpServer) {
                 }
             });
         }
+        else if (req.method === 'GET' && req.url === '/latest-change') {
+            const keys = Array.from(analysisCache.keys());
+            const latestId = keys[keys.length - 1] || null;
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ changeId: latestId }));
+            return;
+        }
+        else if (req.method === 'GET' && req.url === '/changes') {
+            const keys = Array.from(analysisCache.keys());
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ changeIds: keys }));
+            return;
+        }
         else if (req.method === 'GET' && req.url?.startsWith('/analysis/')) {
             // Extract changeId from URL
             const changeId = req.url.split('/analysis/')[1];
@@ -149,12 +167,87 @@ export async function startWebSocketServer(mcpServer) {
             const analysis = analysisCache.get(changeId);
             if (analysis) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true, analysis }));
+                res.end(JSON.stringify({
+                    success: true,
+                    analysis: {
+                        ...analysis,
+                        tokens: analysis.tokens,
+                        cost: analysis.cost,
+                        durationMs: analysis.durationMs,
+                        workspacePath: process.env.WORKSPACE_PATH || '',
+                    },
+                    // keep for backwards-compat with existing UI consumers
+                    workspacePath: process.env.WORKSPACE_PATH || '',
+                }));
             }
             else {
                 res.writeHead(404, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: false, error: 'Analysis not found' }));
             }
+        }
+        else if (req.method === 'POST' && req.url === '/export-session') {
+            let body = '';
+            req.on('data', (chunk) => {
+                body += chunk.toString();
+            });
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    const changeId = data.changeId;
+                    const workspacePath = data.workspacePath || process.env.WORKSPACE_PATH || '';
+                    if (!changeId || typeof changeId !== 'string') {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: 'Missing changeId' }));
+                        return;
+                    }
+                    if (!workspacePath || typeof workspacePath !== 'string') {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: 'Missing workspacePath' }));
+                        return;
+                    }
+                    const cachedAnalysis = analysisCache.get(changeId);
+                    if (!cachedAnalysis) {
+                        res.writeHead(404, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: false, error: 'Analysis not found' }));
+                        return;
+                    }
+                    const nowIso = new Date().toISOString();
+                    const safeTimestamp = nowIso.replace(/[:.]/g, '-');
+                    const report = {
+                        exported_at: nowIso,
+                        tool: 'Bob Lens',
+                        version: '0.1.0',
+                        author: 'Preyash Yadav — www.preyashyadav.com',
+                        change: {
+                            id: changeId,
+                            description: cachedAnalysis.changeDescription || '',
+                            timestamp: cachedAnalysis.timestamp || nowIso,
+                            files: cachedAnalysis.files || [],
+                        },
+                        analysis: {
+                            summary: cachedAnalysis.summary,
+                            explanation: cachedAnalysis.explanation,
+                            verdict: cachedAnalysis.verdict,
+                            risks: cachedAnalysis.risks,
+                            before_nodes: cachedAnalysis.before,
+                            after_nodes: cachedAnalysis.after,
+                            tokens_used: cachedAnalysis.tokens,
+                            duration_ms: cachedAnalysis.durationMs,
+                        },
+                    };
+                    const sessionsDir = path.join(workspacePath, 'bob_sessions');
+                    fs.mkdirSync(sessionsDir, { recursive: true });
+                    const filename = `bob-lens-${changeId}-${safeTimestamp}.json`;
+                    const fullPath = path.join(sessionsDir, filename);
+                    fs.writeFileSync(fullPath, JSON.stringify(report, null, 2), 'utf-8');
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, filename }));
+                }
+                catch (error) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: false, error: error?.message || 'Export failed' }));
+                }
+            });
         }
         else {
             res.writeHead(404, { 'Content-Type': 'application/json' });

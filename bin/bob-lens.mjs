@@ -31,30 +31,30 @@ if (!command || !['init', 'start'].includes(command)) {
 }
 
 if (command === 'init') {
-  console.log('🔍 Initializing Bob Lens...\n');
+  console.log('Initializing Bob Lens...\n');
 
   // 1. Detect workspace path
   const workspacePath = process.cwd();
-  console.log(`📁 Workspace: ${workspacePath}`);
+  console.log(`Workspace: ${workspacePath}`);
 
   // 2. Detect bob binary path
   let bobPath;
   try {
     bobPath = execSync('which bob').toString().trim();
-    console.log(`🤖 Bob Shell: ${bobPath}`);
+    console.log(`Bob Shell: ${bobPath}`);
   } catch (error) {
-    console.error('\n❌ Bob Shell not found. Install from bob.ibm.com/download');
+    console.error('\nERROR: Bob Shell not found. Install from bob.ibm.com/download');
     process.exit(1);
   }
 
   // 3. Find bob-lens installation path
-  console.log(`📦 Bob Lens: ${bobLensRoot}`);
+  console.log(`Bob Lens: ${bobLensRoot}`);
 
   // 4. Create .bob/ directory if not exists
   const bobDir = join(workspacePath, '.bob');
   if (!existsSync(bobDir)) {
     mkdirSync(bobDir, { recursive: true });
-    console.log('✓ Created .bob/ directory');
+    console.log('OK: Created .bob/ directory');
   }
 
   // 5. Write .bob/mcp.json
@@ -79,7 +79,7 @@ if (command === 'init') {
 
   const mcpJsonPath = join(bobDir, 'mcp.json');
   writeFileSync(mcpJsonPath, JSON.stringify(mcpConfig, null, 2));
-  console.log('✓ Created .bob/mcp.json');
+  console.log('OK: Created .bob/mcp.json');
 
   // 6. Append to .bobignore
   const bobignorePath = join(workspacePath, '.bobignore');
@@ -89,11 +89,11 @@ if (command === 'init') {
     const existing = readFileSync(bobignorePath, 'utf-8');
     if (!existing.includes('.bob-lens/') || !existing.includes('bob_sessions/')) {
       appendFileSync(bobignorePath, bobignoreContent);
-      console.log('✓ Updated .bobignore');
+      console.log('OK: Updated .bobignore');
     }
   } else {
     writeFileSync(bobignorePath, bobignoreContent.trim() + '\n');
-    console.log('✓ Created .bobignore');
+    console.log('OK: Created .bobignore');
   }
 
   // 7. Write AGENTS.md if not exists
@@ -125,23 +125,23 @@ notify_change({
 })
 `;
     writeFileSync(agentsMdPath, agentsContent);
-    console.log(`${existsSync(agentsMdPath) ? '✓ Updated' : '✓ Created'} AGENTS.md`);
+    console.log(`${existsSync(agentsMdPath) ? 'OK: Updated' : 'OK: Created'} AGENTS.md`);
   }
 
   // 8. Create bob_sessions/ directory if not exists
   const sessionsDir = join(workspacePath, 'bob_sessions');
   if (!existsSync(sessionsDir)) {
     mkdirSync(sessionsDir, { recursive: true });
-    console.log('✓ Created bob_sessions/ directory');
+    console.log('OK: Created bob_sessions/ directory');
   }
 
   // 9. Print success message
-  console.log('\n✅ Bob Lens initialized successfully!\n');
+  console.log('\nOK: Bob Lens initialized successfully!\n');
   console.log('Next steps:');
   console.log('1. Run: bob-lens start  (or: node /path/to/bob-lens/bin/bob-lens.mjs start)');
   console.log('2. Open http://localhost:3333 in your browser');
   console.log('3. Open this project in IBM Bob IDE');
-  console.log('4. Go to Bob IDE → MCP settings → click Restart on bob-lens');
+  console.log('4. Go to Bob IDE > MCP settings > click Restart on bob-lens');
   console.log('   (Only needed once — auto-reconnects after that)');
   console.log('5. Enable MCP auto-approve in Bob IDE settings\n');
   console.log("That's it! Bob Lens will now visualize changes automatically.\n");
@@ -152,7 +152,7 @@ notify_change({
   const mcpJsonPath = join(workspacePath, '.bob/mcp.json');
   
   if (!existsSync(mcpJsonPath)) {
-    console.error('❌ Bob Lens not initialized. Run: bob-lens init');
+    console.error('ERROR: Bob Lens not initialized. Run: bob-lens init');
     process.exit(1);
   }
 
@@ -191,15 +191,15 @@ notify_change({
     }
   ];
 
-  console.log('🔍 Bob Lens starting...\n');
-  console.log('● WebSocket Bridge → ws://localhost:8080 (http://localhost:8081)');
-  console.log(`● UI            → http://localhost:${uiPort}`);
-  console.log('● Sandbox       → port 3334');
-  console.log('● MCP Server    → started by IBM Bob IDE automatically\n');
+  console.log('Bob Lens starting...\n');
+  console.log('WebSocket Bridge: ws://localhost:8080 (http://localhost:8081)');
+  console.log(`UI: http://localhost:${uiPort}`);
+  console.log('Sandbox: port 3334');
+  console.log('MCP Server: started by IBM Bob IDE automatically\n');
   console.log(`Open http://localhost:${uiPort} in your browser.`);
   console.log('Make changes with IBM Bob IDE to see them visualized.\n');
   console.log('Press Ctrl+C to stop.\n');
-  console.log('Built by Preyash Yadav → www.preyashyadav.com\n');
+  console.log('Built by Preyash Yadav: www.preyashyadav.com\n');
 
   processes.forEach(({ name, cmd, args, env }) => {
     const proc = spawn(cmd, args, { env, stdio: 'inherit' });

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check, Loader2, Minus, X } from 'lucide-react';
 
 interface TestRunnerProps {
   activeFile?: {
@@ -109,17 +110,41 @@ function TestRunner({ activeFile }: TestRunnerProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
-        return <span className="status-icon pending">○</span>;
+        return (
+          <span className="status-icon pending" aria-label="Pending">
+            <Minus size={10} />
+          </span>
+        );
       case 'active':
-        return <span className="status-icon active spinning">◉</span>;
+        return (
+          <span className="status-icon active" aria-label="Running">
+            <Loader2 size={10} className="animate-spin" />
+          </span>
+        );
       case 'success':
-        return <span className="status-icon success">✓</span>;
+        return (
+          <span className="status-icon success" aria-label="Success">
+            <Check size={10} />
+          </span>
+        );
       case 'error':
-        return <span className="status-icon error">✗</span>;
+        return (
+          <span className="status-icon error" aria-label="Error">
+            <X size={10} />
+          </span>
+        );
       case 'skipped':
-        return <span className="status-icon skipped">−</span>;
+        return (
+          <span className="status-icon skipped" aria-label="Skipped">
+            <Minus size={10} />
+          </span>
+        );
       default:
-        return <span className="status-icon pending">○</span>;
+        return (
+          <span className="status-icon pending" aria-label="Pending">
+            <Minus size={10} />
+          </span>
+        );
     }
   };
 

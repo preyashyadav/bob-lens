@@ -1,7 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, Check, Code2, CornerUpLeft, Eye, LayoutGrid, Loader2 } from 'lucide-react';
-import { ChangeSet, FileChange } from '../../../types/change';
+import { ChangeSet } from '../../../types/change';
 import AnalysisPanel from './AnalysisPanel';
+
+const Tooltip = ({ text, children }: { text: string; children: ReactNode }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-flex' }}
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            marginBottom: '6px',
+            background: '#1a1a1a',
+            border: '1px solid #353b41',
+            color: '#ecf1f8',
+            fontSize: '11px',
+            fontFamily: 'var(--font-ui)',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            pointerEvents: 'none',
+          }}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface ChangeViewerProps {
   changeSets: ChangeSet[];
@@ -18,75 +54,6 @@ interface ScreenshotState {
   error?: string;
 }
 
-// Helper function to find character-level differences between two strings
-function getCharDiffs(oldStr: string, newStr: string): { oldHighlights: boolean[], newHighlights: boolean[] } {
-  const oldHighlights: boolean[] = new Array(oldStr.length).fill(false);
-  const newHighlights: boolean[] = new Array(newStr.length).fill(false);
-  
-  let i = 0, j = 0;
-  
-  // Find matching prefix
-  while (i < oldStr.length && j < newStr.length && oldStr[i] === newStr[j]) {
-    i++;
-    j++;
-  }
-  
-  // Find matching suffix
-  let oldEnd = oldStr.length - 1;
-  let newEnd = newStr.length - 1;
-  while (oldEnd >= i && newEnd >= j && oldStr[oldEnd] === newStr[newEnd]) {
-    oldEnd--;
-    newEnd--;
-  }
-  
-  // Mark differences
-  for (let k = i; k <= oldEnd; k++) {
-    oldHighlights[k] = true;
-  }
-  for (let k = j; k <= newEnd; k++) {
-    newHighlights[k] = true;
-  }
-  
-  return { oldHighlights, newHighlights };
-}
-
-// Helper function to render text with character-level highlights
-function renderWithHighlights(text: string, highlights: boolean[], bgColor: string) {
-  const result: JSX.Element[] = [];
-  let currentSegment = '';
-  let isHighlighted = false;
-  
-  for (let i = 0; i < text.length; i++) {
-    if (highlights[i] !== isHighlighted) {
-      if (currentSegment) {
-        result.push(
-          isHighlighted ? (
-            <span key={i} style={{ background: bgColor }}>{currentSegment}</span>
-          ) : (
-            <span key={i}>{currentSegment}</span>
-          )
-        );
-      }
-      currentSegment = text[i];
-      isHighlighted = highlights[i];
-    } else {
-      currentSegment += text[i];
-    }
-  }
-  
-  if (currentSegment) {
-    result.push(
-      isHighlighted ? (
-        <span key={text.length} style={{ background: bgColor }}>{currentSegment}</span>
-      ) : (
-        <span key={text.length}>{currentSegment}</span>
-      )
-    );
-  }
-  
-  return result;
-}
-
 function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTabChange }: ChangeViewerProps) {
   const [analysisChangeId, setAnalysisChangeId] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<ScreenshotState | null>(null);
@@ -96,11 +63,107 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
 
   const latestChangeSetForHooks = changeSets?.length ? changeSets[changeSets.length - 1] : null;
   const activeFileForHooks = latestChangeSetForHooks?.changes?.[activeTabIndex] ?? null;
-  const isReactComponent = !!activeFileForHooks?.filePath?.match(/\.(jsx|tsx)$/);
+  const isReactFile = !!activeFileForHooks?.filePath?.match(/\.(jsx|tsx)$/i);
+  const activeScreenshotKey =
+    latestChangeSetForHooks?.id && activeFileForHooks?.filePath ? `${latestChangeSetForHooks.id}:${activeFileForHooks.filePath}` : null;
+  const activeScreenshotKeyRef = useRef<string | null>(activeScreenshotKey);
 
   useEffect(() => {
-    if (!isReactComponent && showScreenshots) setShowScreenshots(false);
-  }, [isReactComponent, showScreenshots]);
+    activeScreenshotKeyRef.current = activeScreenshotKey;
+  }, [activeScreenshotKey]);
+
+  // Reset screenshots whenever the active file (or change set) changes.
+  useEffect(() => {
+    setScreenshots(null);
+  }, [activeScreenshotKey, activeTabIndex, latestChangeSetForHooks?.id, activeFileForHooks?.filePath]);
+
+  useEffect(() => {
+    if (!isReactFile && showScreenshots) setShowScreenshots(false);
+  }, [isReactFile, showScreenshots]);
+
+  const fetchScreenshotsForActiveFile = useCallback(async () => {
+    if (!activeFileForHooks?.filePath) return;
+
+    const requestKey = activeScreenshotKeyRef.current;
+    setScreenshots({ loading: true, before: '', after: '' });
+
+    try {
+      const componentName =
+        activeFileForHooks.filePath
+          .split('/')
+          .pop()
+          ?.replace(/\.(jsx|tsx)$/i, '') || 'Component';
+
+      const response = await fetch('http://localhost:3334/screenshot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          beforeCode: activeFileForHooks.before || '',
+          afterCode: activeFileForHooks.after || '',
+          componentName,
+        }),
+      });
+
+      const result = await response.json();
+
+      // Ignore stale responses (user switched tabs/files mid-request).
+      if (activeScreenshotKeyRef.current !== requestKey) return;
+
+      if (result.success && result.before && result.after) {
+        setScreenshots({
+          loading: false,
+          before: result.before,
+          after: result.after,
+          error: result.error,
+        });
+      } else {
+        setScreenshots({
+          loading: false,
+          before: '',
+          after: '',
+          error: result.error || 'Failed to generate screenshots',
+        });
+      }
+    } catch (error: any) {
+      if (activeScreenshotKeyRef.current !== requestKey) return;
+      setScreenshots({
+        loading: false,
+        before: '',
+        after: '',
+        error: error.message || 'Failed to connect to sandbox server',
+      });
+    }
+  }, [activeFileForHooks]);
+
+  // When preview is shown, fetch screenshots for the currently active file/change.
+  useEffect(() => {
+    if (!showScreenshots) return;
+    if (!isReactFile) return;
+    if (!activeFileForHooks) return;
+    if (screenshots) return; // already loaded (or currently loading) for this active key
+
+    fetchScreenshotsForActiveFile();
+  }, [showScreenshots, isReactFile, activeScreenshotKey, activeFileForHooks, screenshots, fetchScreenshotsForActiveFile]);
+
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.8); }
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   useEffect(() => {
     if (!latestChangeSetForHooks?.id) return;
@@ -178,6 +241,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
 
   const latestChangeSet = changeSets[changeSets.length - 1];
   const activeFile = latestChangeSet.changes[activeTabIndex];
+  const analysisLoading = Boolean(analysisPollingByChangeSetId[latestChangeSet.id]);
 
   // Helper function to get filename from path
   const getFileName = (filePath: string): string => {
@@ -185,298 +249,30 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
     return parts[parts.length - 1];
   };
 
-  // Helper function to extract component name from filename
-  const getComponentName = (filePath: string): string => {
-    const filename = getFileName(filePath);
-    // Remove extension (.jsx, .tsx, .js, .ts)
-    return filename.replace(/\.(jsx?|tsx?)$/, '');
-  };
-
-  // Helper function to calculate change indicator color
-  const getChangeIndicator = (file: FileChange): string => {
-    const beforeLen = file.before.length;
-    const afterLen = file.after.length;
-    
-    if (beforeLen === 0) {
-      return 'red'; // New file
-    }
-    
-    const diff = Math.abs(afterLen - beforeLen);
-    const percentChange = (diff / beforeLen) * 100;
-    
-    if (percentChange < 10) {
-      return 'green'; // Small change
-    } else if (percentChange < 50) {
-      return 'yellow'; // Moderate change
-    } else {
-      return 'red'; // Large change
-    }
-  };
-
-  // Helper function to get file type badge
-  const getFileTypeBadge = (fileType: string): string => {
+  const fileTypeColor = (fileType: string): string => {
     switch (fileType) {
       case 'frontend':
-        return '[F]';
+        return '#42be65';
       case 'backend':
-        return '[B]';
+        return '#f1c21b';
       case 'config':
-        return '[C]';
+        return '#7aabff';
       default:
-        return '[?]';
+        return '#353b41';
     }
   };
 
-  // Function to fetch component screenshots
-  const fetchScreenshots = async () => {
-    setScreenshots({ loading: true, before: '', after: '' });
-    setShowScreenshots(true);
-
-    try {
-      const componentName = getComponentName(activeFile.filePath);
-      const response = await fetch('http://localhost:3334/screenshot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          beforeCode: activeFile.before,
-          afterCode: activeFile.after,
-          componentName,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.before && result.after) {
-        setScreenshots({
-          loading: false,
-          before: result.before,
-          after: result.after,
-          error: result.error,
-        });
-      } else {
-        setScreenshots({
-          loading: false,
-          before: '',
-          after: '',
-          error: result.error || 'Failed to generate screenshots',
-        });
-      }
-    } catch (error: any) {
-      setScreenshots({
-        loading: false,
-        before: '',
-        after: '',
-        error: error.message || 'Failed to connect to sandbox server',
-      });
+  const fileTypeLabel = (fileType: string): string => {
+    switch (fileType) {
+      case 'frontend':
+        return 'F';
+      case 'backend':
+        return 'B';
+      case 'config':
+        return 'C';
+      default:
+        return '?';
     }
-  };
-
-  const renderSideBySideDiff = (before: string, after: string) => {
-    const beforeLines = before.split('\n');
-    const afterLines = after.split('\n');
-    
-    // Parse diff to find corresponding lines
-    const diffLines = activeFile.diff?.split('\n') || [];
-    const removedLines: { lineNum: number; content: string }[] = [];
-    const addedLines: { lineNum: number; content: string }[] = [];
-    
-    let beforeLineNum = 0;
-    let afterLineNum = 0;
-    
-    for (const line of diffLines) {
-      if (line.startsWith('@@')) {
-        const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
-        if (match) {
-          beforeLineNum = parseInt(match[1]) - 1;
-          afterLineNum = parseInt(match[2]) - 1;
-        }
-      } else if (line.startsWith('-') && !line.startsWith('---')) {
-        removedLines.push({ lineNum: beforeLineNum, content: line.substring(1) });
-        beforeLineNum++;
-      } else if (line.startsWith('+') && !line.startsWith('+++')) {
-        addedLines.push({ lineNum: afterLineNum, content: line.substring(1) });
-        afterLineNum++;
-      } else if (!line.startsWith('\\')) {
-        beforeLineNum++;
-        afterLineNum++;
-      }
-    }
-    
-    return { beforeLines, afterLines, removedLines, addedLines };
-  };
-
-  const renderCodePanel = (lines: string[], title: string, changedLines: { lineNum: number; content: string }[], isRemoved: boolean) => {
-    const changedLineNums = new Set(changedLines.map(l => l.lineNum));
-    const bgColor = isRemoved ? 'rgba(244,71,71,0.4)' : 'rgba(76,175,80,0.4)';
-    
-    // Create a map of line numbers to their highlighted content
-    const highlightMap = new Map<number, JSX.Element[]>();
-    
-    // Find pairs of removed/added lines for character-level diff
-    if (changedLines.length > 0) {
-      const { removedLines, addedLines } = renderSideBySideDiff(activeFile.before, activeFile.after);
-      
-      if (isRemoved) {
-        // Match removed lines with added lines for character diff
-        removedLines.forEach((removed, idx) => {
-          if (idx < addedLines.length) {
-            const { oldHighlights } = getCharDiffs(removed.content, addedLines[idx].content);
-            highlightMap.set(removed.lineNum, renderWithHighlights(removed.content, oldHighlights, bgColor));
-          }
-        });
-      } else {
-        // Match added lines with removed lines for character diff
-        addedLines.forEach((added, idx) => {
-          if (idx < removedLines.length) {
-            const { newHighlights } = getCharDiffs(removedLines[idx].content, added.content);
-            highlightMap.set(added.lineNum, renderWithHighlights(added.content, newHighlights, bgColor));
-          }
-        });
-      }
-    }
-    
-    return (
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column',
-        overflow: 'hidden',
-        background: 'var(--bg-primary)'
-      }}>
-        <div style={{ 
-          fontFamily: 'var(--font-ui)',
-          fontSize: '12px',
-          fontWeight: 600,
-          letterSpacing: '1px',
-          color: 'var(--text-secondary)',
-          padding: '12px',
-          textTransform: 'uppercase',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-secondary)'
-        }}>
-          {title}
-        </div>
-        <div style={{ 
-          flex: 1, 
-          overflow: 'auto',
-          fontFamily: 'var(--font-mono)',
-          fontSize: '12px',
-          lineHeight: '1.6'
-        }}>
-          {lines.map((line, i) => {
-            const isChanged = changedLineNums.has(i);
-            const highlightedContent = highlightMap.get(i);
-            
-            return (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  whiteSpace: 'pre',
-                  background: isChanged ? (isRemoved ? 'rgba(248,81,73,0.15)' : 'rgba(46,160,67,0.15)') : 'transparent',
-                }}
-              >
-                <div
-                  style={{
-                    width: 50,
-                    flexShrink: 0,
-                    textAlign: 'right',
-                    padding: '0 12px 0 8px',
-                    userSelect: 'none',
-                    color: 'var(--text-secondary)',
-                    background: isChanged ? (isRemoved ? 'rgba(248,81,73,0.3)' : 'rgba(46,160,67,0.3)') : 'var(--bg-secondary)',
-                    borderRight: '1px solid var(--border)'
-                  }}
-                >
-                  {i + 1}
-                </div>
-                <div style={{ 
-                  flex: 1, 
-                  padding: '0 12px',
-                  color: isChanged ? (isRemoved ? '#f85149' : '#3fb950') : 'var(--text-primary)'
-                }}>
-                  {highlightedContent || line || ' '}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderUnifiedDiff = (diff: string | undefined) => {
-    if (!diff) {
-      return <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontFamily: 'var(--font-ui)' }}>No diff available</div>;
-    }
-
-    const lines = diff.split('\n');
-    return (
-      <div
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 12,
-          lineHeight: 1.5,
-          background: 'var(--bg-primary)',
-          color: 'var(--text-primary)',
-        }}
-      >
-        {lines.map((line, i) => {
-          const isAdd = line.startsWith('+') && !line.startsWith('+++');
-          const isDel = line.startsWith('-') && !line.startsWith('---');
-          const isHunk = line.startsWith('@@');
-
-          let background = 'var(--bg-primary)';
-          let color = 'var(--text-primary)';
-          let lineNumberBg = 'transparent';
-          let fontStyle: 'normal' | 'italic' = 'normal';
-
-          if (isAdd) {
-            background = 'rgba(46,160,67,0.15)';
-            color = '#3fb950';
-            lineNumberBg = 'rgba(46,160,67,0.3)';
-          } else if (isDel) {
-            background = 'rgba(248,81,73,0.15)';
-            color = '#f85149';
-            lineNumberBg = 'rgba(248,81,73,0.3)';
-          } else if (isHunk) {
-            background = 'rgba(56,139,253,0.1)';
-            color = '#79c0ff';
-            fontStyle = 'italic';
-          }
-
-          return (
-            <div
-              key={i}
-              style={{
-                display: 'flex',
-                whiteSpace: 'pre',
-                background,
-                color,
-                fontStyle,
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  flexShrink: 0,
-                  textAlign: 'right',
-                  padding: '0 8px 0 0',
-                  userSelect: 'none',
-                  background: lineNumberBg,
-                  color: 'var(--text-secondary)',
-                }}
-              >
-                {i + 1}
-              </div>
-              <div style={{ flex: 1, padding: '0 8px' }}>{line || ' '}</div>
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   const renderScreenshotComparison = () => {
@@ -484,20 +280,8 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
 
     if (screenshots.loading) {
       return (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '400px',
-          fontFamily: 'var(--font-ui)',
-          color: 'var(--text-secondary)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px', display: 'inline-flex' }}>
-              <Loader2 size={32} className="animate-spin" />
-            </div>
-            <div>Rendering component screenshots...</div>
-          </div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#697077', fontFamily: 'var(--font-ui)', fontSize: '12px' }}>
+          Rendering component with Puppeteer...
         </div>
       );
     }
@@ -510,7 +294,7 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
           color: 'var(--text-secondary)',
           textAlign: 'center'
         }}>
-          <div style={{ color: 'var(--error)', marginBottom: '8px' }}>
+          <div style={{ color: '#fa4d56', marginBottom: '8px' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <AlertTriangle size={14} />
               Screenshot rendering failed
@@ -519,101 +303,67 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
           <div style={{ fontSize: '12px' }}>
             {screenshots.error || 'Unable to render component'}
           </div>
-          <button
-            onClick={() => setShowScreenshots(false)}
-            style={{
-              marginTop: '16px',
-              padding: '8px 16px',
-              background: 'var(--accent-blue)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 'var(--radius)',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-          >
-            Show Code Diff
-          </button>
+          <Tooltip text="View side-by-side code diff">
+            <button
+              onClick={() => setShowScreenshots(false)}
+              title="View side-by-side code diff"
+              style={{
+                marginTop: '16px',
+                padding: '8px 16px',
+                background: 'transparent',
+                color: '#7aabff',
+                border: '1px solid #7aabff',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: '12px',
+              }}
+            >
+              Show Code Diff
+            </button>
+          </Tooltip>
         </div>
       );
     }
 
     return (
-      <div style={{ 
-        display: 'flex', 
-        height: '100%',
-        overflow: 'hidden'
-      }}>
-        <div style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column',
-          overflow: 'hidden',
-          background: 'var(--bg-primary)'
-        }}>
-          <div style={{ 
-            fontFamily: 'var(--font-ui)',
-            fontSize: '12px',
-            fontWeight: 600,
-            letterSpacing: '1px',
-            color: 'var(--text-secondary)',
-            padding: '12px',
-            textTransform: 'uppercase',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg-secondary)'
-          }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#353b41' }}>
+        <div style={{ background: '#171717', padding: '16px' }}>
+          <div
+            style={{
+              fontSize: '10px',
+              color: '#697077',
+              fontFamily: 'var(--font-ui)',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+            }}
+          >
             BEFORE
           </div>
-          <div style={{ 
-            flex: 1, 
-            overflow: 'auto',
-            padding: '16px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center'
-          }}>
-            <img 
-              src={`data:image/png;base64,${screenshots.before}`} 
-              alt="Before screenshot"
-              style={{ maxWidth: '100%', border: '1px solid var(--border)' }}
-            />
-          </div>
+          <img
+            src={`data:image/png;base64,${screenshots.before}`}
+            alt="Before screenshot"
+            style={{ width: '100%', borderRadius: '2px', border: '1px solid #353b41' }}
+          />
         </div>
-        <div style={{ width: '1px', background: 'var(--border)', flexShrink: 0 }} />
-        <div style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column',
-          overflow: 'hidden',
-          background: 'var(--bg-primary)'
-        }}>
-          <div style={{ 
-            fontFamily: 'var(--font-ui)',
-            fontSize: '12px',
-            fontWeight: 600,
-            letterSpacing: '1px',
-            color: 'var(--text-secondary)',
-            padding: '12px',
-            textTransform: 'uppercase',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg-secondary)'
-          }}>
+        <div style={{ background: '#171717', padding: '16px' }}>
+          <div
+            style={{
+              fontSize: '10px',
+              color: '#697077',
+              fontFamily: 'var(--font-ui)',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+            }}
+          >
             AFTER
           </div>
-          <div style={{ 
-            flex: 1, 
-            overflow: 'auto',
-            padding: '16px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center'
-          }}>
-            <img 
-              src={`data:image/png;base64,${screenshots.after}`} 
-              alt="After screenshot"
-              style={{ maxWidth: '100%', border: '1px solid var(--border)' }}
-            />
-          </div>
+          <img
+            src={`data:image/png;base64,${screenshots.after}`}
+            alt="After screenshot"
+            style={{ width: '100%', borderRadius: '2px', border: '1px solid #353b41' }}
+          />
         </div>
       </div>
     );
@@ -622,164 +372,262 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
   return (
     <div className="change-viewer">
       {/* Top Section - Task Header */}
-      <div className="task-header">
-        <div className="task-info">
-          <h2>{latestChangeSet.description || 'Code Changes'}</h2>
-          <span className="timestamp">
-            {new Date(latestChangeSet.timestamp).toLocaleString()}
-          </span>
-        </div>
-        <div className="task-actions">
-          <button
-            className="btn-approve"
-            onClick={() => onApprove(latestChangeSet.id)}
+      <div
+        style={{
+          background: '#171717',
+          borderBottom: '1px solid #353b41',
+          padding: '10px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: '#ecf1f8',
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 500,
+            }}
           >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Check size={14} />
-              Approve
-            </span>
+            {latestChangeSet.description || 'Code Changes'}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: '#697077',
+              fontFamily: 'var(--font-ui)',
+              fontWeight: 300,
+            }}
+          >
+            {new Date(latestChangeSet.timestamp).toLocaleString()}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => onApprove(latestChangeSet.id)}
+            style={{
+              background: 'transparent',
+              border: '1px solid #7aabff',
+              color: '#7aabff',
+              borderRadius: 4,
+              cursor: 'pointer',
+              padding: '6px 10px',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            title="Approve"
+            aria-label="Approve"
+          >
+            <Check size={14} />
+            Approve
           </button>
           <button
-            className="btn-rollback"
             onClick={() => onRollback(latestChangeSet.id)}
+            style={{
+              background: 'transparent',
+              border: '1px solid #7aabff',
+              color: '#7aabff',
+              borderRadius: 4,
+              cursor: 'pointer',
+              padding: '6px 10px',
+              fontSize: 12,
+              fontFamily: 'var(--font-ui)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            title="Rollback"
+            aria-label="Rollback"
           >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <CornerUpLeft size={14} />
-              Rollback
-            </span>
+            <CornerUpLeft size={14} />
+            Rollback
           </button>
         </div>
       </div>
 
       {/* Middle Section - File Tabs */}
-      <div className="file-tabs">
-        {latestChangeSet.changes.map((file, index) => (
-          <button
-            key={index}
-            className={`file-tab ${index === activeTabIndex ? 'active' : ''}`}
-            onClick={() => onTabChange(index)}
-          >
-            <span
-              className="change-indicator"
-              style={{ backgroundColor: getChangeIndicator(file) }}
-            />
-            {getFileName(file.filePath)}
-            <span className="file-type-badge">{getFileTypeBadge(file.fileType)}</span>
-            {/* Eye button states:
-                1) No analysis yet (disabled) — when analysis polling not started (should not happen after first change)
-                2) Loading/analyzing (disabled w/ spinner) — while polling
-                3) Ready (clickable) — when analysis found */}
-            {analysisReadyByChangeSetId[latestChangeSet.id] ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAnalysisChangeId(latestChangeSet.id);
-                }}
-                title="View analysis"
-                aria-label="View analysis"
-                style={{
-                  marginLeft: 8,
-                  background: 'transparent',
-                  border: '1px solid #3e3e42',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  padding: '2px 6px',
-                  fontSize: 12,
-                  lineHeight: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  userSelect: 'none',
-                  color: 'var(--accent-blue)',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                <Eye size={14} />
-              </button>
-            ) : analysisPollingByChangeSetId[latestChangeSet.id] ? (
-              <button
-                disabled
-                title="Analyzing..."
-                aria-label="Analyzing..."
-                style={{
-                  marginLeft: 8,
-                  background: 'transparent',
-                  border: '1px solid #3e3e42',
-                  color: '#cccccc',
-                  borderRadius: 4,
-                  cursor: 'wait',
-                  padding: '2px 6px',
-                  fontSize: 12,
-                  lineHeight: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  userSelect: 'none',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                <Loader2 size={14} className="animate-spin" />
-              </button>
-            ) : (
-              <button
-                disabled
-                title="No analysis yet"
-                aria-label="No analysis yet"
-                style={{
-                  marginLeft: 8,
-                  background: 'transparent',
-                  border: '1px solid #3e3e42',
-                  color: '#cccccc',
-                  borderRadius: 4,
-                  padding: '2px 6px',
-                  fontSize: 12,
-                  lineHeight: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  userSelect: 'none',
-                  opacity: 0.4,
-                  cursor: 'not-allowed',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                <Eye size={14} />
-              </button>
-            )}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0',
+          borderBottom: '1px solid #353b41',
+          background: '#171717',
+          padding: '0 16px',
+          overflowX: 'auto',
+        }}
+      >
+        {latestChangeSet.changes.map((file, index) => {
+          const isActive = index === activeTabIndex;
+          const fileName = getFileName(file.filePath);
+          const fileType = fileTypeLabel(file.fileType);
+          const typeColor = fileTypeColor(file.fileType);
 
-            {/* Only show component preview toggle for React component files */}
-            {index === activeTabIndex && isReactComponent && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fetchScreenshots();
-                }}
-                title="Component Preview"
-                aria-label="Component Preview"
+          return (
+            <button
+              key={index}
+              onClick={() => onTabChange(index)}
+              style={{
+                padding: '10px 16px',
+                fontSize: '12px',
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 400,
+                color: isActive ? '#ffffff' : '#697077',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: isActive ? '2px solid #7aabff' : '2px solid transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span
                 style={{
-                  marginLeft: 8,
-                  background: 'transparent',
-                  border: '1px solid #3e3e42',
-                  color: '#cccccc',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  padding: '2px 6px',
-                  fontSize: 12,
-                  lineHeight: 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  userSelect: 'none',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: analysisLoading ? '#7aabff' : typeColor,
+                  display: 'inline-block',
+                  animation: analysisLoading ? 'pulse 1.5s ease-in-out infinite' : undefined,
+                }}
+              />
+              {fileName}
+              <span
+                style={{
+                  fontSize: '9px',
+                  padding: '1px 4px',
+                  border: '1px solid #353b41',
+                  borderRadius: '4px',
+                  color: '#697077',
                   fontFamily: 'var(--font-ui)',
                 }}
               >
-                <LayoutGrid size={14} />
-              </button>
-            )}
-          </button>
-        ))}
+                {fileType}
+              </span>
+
+              {analysisReadyByChangeSetId[latestChangeSet.id] ? (
+                <Tooltip text="View analysis">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAnalysisChangeId(latestChangeSet.id);
+                    }}
+                    title="View analysis"
+                    aria-label="View analysis"
+                    style={{
+                      marginLeft: 6,
+                      background: 'transparent',
+                      border: '1px solid #353b41',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      userSelect: 'none',
+                      color: '#7aabff',
+                    }}
+                  >
+                    <Eye size={14} />
+                  </button>
+                </Tooltip>
+              ) : analysisPollingByChangeSetId[latestChangeSet.id] ? (
+                <Tooltip text="Analyzing...">
+                  <button
+                    disabled
+                    title="Analyzing..."
+                    aria-label="Analyzing..."
+                    style={{
+                      marginLeft: 6,
+                      background: 'transparent',
+                      border: '1px solid #353b41',
+                      color: '#697077',
+                      borderRadius: 4,
+                      cursor: 'wait',
+                      padding: '2px 6px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      userSelect: 'none',
+                      opacity: 0.8,
+                    }}
+                  >
+                    <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                  </button>
+                </Tooltip>
+              ) : (
+                <Tooltip text="Waiting for analysis...">
+                  <button
+                    disabled
+                    title="Waiting for analysis..."
+                    aria-label="Waiting for analysis..."
+                    style={{
+                      marginLeft: 6,
+                      background: 'transparent',
+                      border: '1px solid #353b41',
+                      color: '#697077',
+                      borderRadius: 4,
+                      padding: '2px 6px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      userSelect: 'none',
+                      opacity: 0.4,
+                      cursor: 'not-allowed',
+                    }}
+                  >
+                    <Eye size={14} />
+                  </button>
+                </Tooltip>
+              )}
+
+              {isActive && isReactFile && (
+                <Tooltip text="See before/after visual render of this component">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowScreenshots((prev) => {
+                        const next = !prev;
+                        return next;
+                      });
+                    }}
+                    title="Component preview"
+                    aria-label="Component preview"
+                    style={{
+                      marginLeft: 6,
+                      background: 'transparent',
+                      border: '1px solid #353b41',
+                      color: '#697077',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      padding: '2px 6px',
+                      lineHeight: 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <LayoutGrid size={13} />
+                  </button>
+                </Tooltip>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Bottom Section - Active Tab Content */}
       {activeFile && (
         <div className="tab-content">
-          {showScreenshots && isReactComponent ? (
+          {showScreenshots && isReactFile ? (
             <>
               <div style={{ 
                 height: '100%',
@@ -802,21 +650,24 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
                   }}>
                     Component Preview
                   </span>
-                  <button
-                    onClick={() => setShowScreenshots(false)}
-                    style={{
-                      padding: '4px 12px',
-                      background: 'transparent',
-                      color: 'var(--accent-blue)',
-                      border: '1px solid var(--accent-blue)',
-                      borderRadius: 'var(--radius)',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      fontFamily: 'var(--font-ui)'
-                    }}
-                  >
-                    Show Code Diff
-                  </button>
+                  <Tooltip text="View side-by-side code diff">
+                    <button
+                      onClick={() => setShowScreenshots(false)}
+                      title="View side-by-side code diff"
+                      style={{
+                        padding: '4px 12px',
+                        background: 'transparent',
+                        color: 'var(--accent-blue)',
+                        border: '1px solid var(--accent-blue)',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-ui)',
+                      }}
+                    >
+                      Show Code Diff
+                    </button>
+                  </Tooltip>
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   {renderScreenshotComparison()}
@@ -825,49 +676,216 @@ function ChangeViewer({ changeSets, onApprove, onRollback, activeTabIndex, onTab
             </>
           ) : (
             <>
-              <div style={{ 
-                display: 'flex', 
-                height: '60%',
-                borderBottom: '1px solid var(--border)',
-                overflow: 'hidden'
-              }}>
-                {renderCodePanel(
-                  activeFile.before.split('\n'),
-                  'BEFORE',
-                  renderSideBySideDiff(activeFile.before, activeFile.after).removedLines,
-                  true
-                )}
-                <div style={{ width: '1px', background: 'var(--border)', flexShrink: 0 }} />
-                {renderCodePanel(
-                  activeFile.after.split('\n'),
-                  'AFTER',
-                  renderSideBySideDiff(activeFile.before, activeFile.after).addedLines,
-                  false
-                )}
-              </div>
-              <div style={{ 
-                height: '40%',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                background: 'var(--bg-secondary)'
-              }}>
-                <div style={{ 
-                  fontFamily: 'var(--font-ui)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  letterSpacing: '1px',
-                  color: 'var(--text-secondary)',
-                  padding: '12px',
-                  textTransform: 'uppercase',
-                  borderBottom: '1px solid var(--border)'
-                }}>
-                  DIFF
-                </div>
-                <div style={{ flex: 1, overflow: 'auto' }}>
-                  {renderUnifiedDiff(activeFile.diff)}
-                </div>
-              </div>
+              {(() => {
+                const beforeLines = activeFile.before.split('\n');
+                const afterLines = activeFile.after.split('\n');
+                const diffLines = (activeFile.diff || '').split('\n');
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '0',
+                        borderTop: '1px solid #353b41',
+                        flex: 1,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          borderRight: '1px solid #353b41',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: '6px 16px',
+                            background: '#171717',
+                            borderBottom: '1px solid #353b41',
+                            fontSize: '10px',
+                            fontFamily: 'var(--font-ui)',
+                            color: '#697077',
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          BEFORE
+                        </div>
+                        <div style={{ overflow: 'auto', flex: 1, background: '#171717' }}>
+                          {beforeLines.map((line, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                display: 'flex',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                lineHeight: '20px',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  minWidth: '40px',
+                                  textAlign: 'right',
+                                  paddingRight: '12px',
+                                  color: '#697077',
+                                  userSelect: 'none',
+                                  fontSize: '11px',
+                                }}
+                              >
+                                {i + 1}
+                              </span>
+                              <span style={{ color: '#ecf1f8', padding: '0 16px 0 0', whiteSpace: 'pre' }}>
+                                {line}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            padding: '6px 16px',
+                            background: '#171717',
+                            borderBottom: '1px solid #353b41',
+                            fontSize: '10px',
+                            fontFamily: 'var(--font-ui)',
+                            color: '#697077',
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          AFTER
+                        </div>
+                        <div style={{ overflow: 'auto', flex: 1, background: '#171717' }}>
+                          {afterLines.map((line, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                display: 'flex',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                lineHeight: '20px',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  minWidth: '40px',
+                                  textAlign: 'right',
+                                  paddingRight: '12px',
+                                  color: '#697077',
+                                  userSelect: 'none',
+                                  fontSize: '11px',
+                                }}
+                              >
+                                {i + 1}
+                              </span>
+                              <span style={{ color: '#ecf1f8', padding: '0 16px 0 0', whiteSpace: 'pre' }}>
+                                {line}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #353b41', background: '#171717' }}>
+                      <div
+                        style={{
+                          padding: '6px 16px',
+                          fontSize: '10px',
+                          fontFamily: 'var(--font-ui)',
+                          color: '#697077',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          borderBottom: '1px solid #353b41',
+                        }}
+                      >
+                        DIFF
+                      </div>
+
+                      {diffLines.map((line, i) => {
+                        const isAdd = line.startsWith('+') && !line.startsWith('+++');
+                        const isDel = line.startsWith('-') && !line.startsWith('---');
+                        const isHunk = line.startsWith('@@');
+
+                        return (
+                          <div
+                            key={i}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'stretch',
+                              background: isAdd
+                                ? 'rgba(66,190,101,0.08)'
+                                : isDel
+                                  ? 'rgba(250,77,86,0.08)'
+                                  : isHunk
+                                    ? 'rgba(122,171,255,0.06)'
+                                    : 'transparent',
+                              borderLeft: isAdd
+                                ? '2px solid #42be65'
+                                : isDel
+                                  ? '2px solid #fa4d56'
+                                  : isHunk
+                                    ? '2px solid #7aabff'
+                                    : '2px solid transparent',
+                            }}
+                          >
+                            <span
+                              style={{
+                                minWidth: '40px',
+                                textAlign: 'right',
+                                paddingRight: '12px',
+                                paddingLeft: '8px',
+                                color: '#697077',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '11px',
+                                lineHeight: '20px',
+                                userSelect: 'none',
+                                borderRight: '1px solid #353b41',
+                              }}
+                            >
+                              {i + 1}
+                            </span>
+                            <span
+                              style={{
+                                width: '20px',
+                                textAlign: 'center',
+                                color: isAdd ? '#42be65' : isDel ? '#fa4d56' : '#697077',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                lineHeight: '20px',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {isAdd ? '+' : isDel ? '-' : isHunk ? '' : ' '}
+                            </span>
+                            <span
+                              style={{
+                                flex: 1,
+                                padding: '0 16px 0 8px',
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: '12px',
+                                lineHeight: '20px',
+                                color: isHunk ? '#7aabff' : '#ecf1f8',
+                                whiteSpace: 'pre',
+                              }}
+                            >
+                              {line.replace(/^[+-]/, '')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

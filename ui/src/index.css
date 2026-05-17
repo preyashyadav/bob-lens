@@ -1,0 +1,53 @@
+:root {
+  --bg-primary: #171717;
+  --bg-secondary: #202432;
+  --bg-tertiary: #353b41;
+  --bg-elevated: #1a1a1a;
+  --border: #353b41;
+  --border-subtle: rgba(255,255,255,0.08);
+  --text-primary: #ffffff;
+  --text-secondary: #697077;
+  --text-muted: #4a4f55;
+  --accent-blue: #7aabff;
+  --accent-blue-subtle: rgba(122,171,255,0.12);
+  --surface-light: #ecf1f8;
+  --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+pre,
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+  border-radius: 4px;
+}
+
+button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}

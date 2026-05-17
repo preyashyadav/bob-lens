@@ -4,7 +4,7 @@ interface ScreenshotOptions {
     width?: number;
     height?: number;
 }
-export declare function captureScreenshot(code: string, testInputs: any, options?: ScreenshotOptions): Promise<string | null>;
+export declare function captureScreenshot(code: string, _testInputs: any, _options?: ScreenshotOptions): Promise<string | null>;
 export declare function renderComponentScreenshots(beforeCode: string, afterCode: string, componentName: string): Promise<{
     before: string;
     after: string;

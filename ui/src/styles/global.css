@@ -1,34 +1,4 @@
-/* CSS Variables - VS Code & Datadog Inspired Design System */
-:root {
-  --bg-primary: #1e1e1e;
-  --bg-secondary: #252526;
-  --bg-tertiary: #2d2d30;
-  --bg-hover: #37373d;
-  --border: #3e3e42;
-  --border-focus: #007acc;
-  --text-primary: #cccccc;
-  --text-secondary: #8c8c8c;
-  --text-bright: #ffffff;
-  --accent-blue: #007acc;
-  --accent-green: #4ec9b0;
-  --accent-yellow: #dcdcaa;
-  --accent-red: #f44747;
-  --accent-orange: #ce9178;
-  --success: #4caf50;
-  --warning: #ff9800;
-  --error: #f44747;
-  --font-mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --radius: 4px;
-  --radius-lg: 8px;
-}
-
-/* Global Resets */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* IBM Bob theme overrides live in `ui/src/index.css` */
 
 /* Body Styles */
 body {
@@ -69,11 +39,11 @@ pre {
 
 *::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: var(--radius);
+  border-radius: 4px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--bg-hover);
+  background: var(--bg-tertiary);
 }
 
 /* App Container */
@@ -86,7 +56,7 @@ pre {
 /* Header Styles */
 .header {
   height: 48px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
@@ -97,7 +67,7 @@ pre {
 .header h1 {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-bright);
+  color: var(--text-primary);
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
@@ -118,11 +88,11 @@ pre {
 }
 
 .status-indicator.connected {
-  color: var(--accent-green);
+  color: #42be65;
 }
 
 .status-indicator.disconnected {
-  color: var(--accent-red);
+  color: #fa4d56;
 }
 
 .status-dot {
@@ -132,11 +102,11 @@ pre {
 }
 
 .status-indicator.connected .status-dot {
-  background: var(--accent-green);
+  background: #42be65;
 }
 
 .status-indicator.disconnected .status-dot {
-  background: var(--accent-red);
+  background: #fa4d56;
 }
 
 /* Main Content Area */
@@ -176,7 +146,7 @@ pre {
 
 /* Task Header Section */
 .task-header {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -186,7 +156,7 @@ pre {
 
 .task-info h2 {
   font-size: 12px;
-  color: var(--text-bright);
+  color: var(--text-primary);
   font-weight: 500;
   margin-bottom: 4px;
 }
@@ -202,27 +172,27 @@ pre {
 }
 
 .btn-approve {
-  background: var(--success);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
   padding: 4px 12px;
-  border-radius: var(--radius);
+  border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   font-weight: 500;
-  transition: filter 0.2s;
+  transition: background 0.15s ease;
 }
 
 .btn-approve:hover {
-  filter: brightness(1.1);
+  background: var(--accent-blue-subtle);
 }
 
 .btn-rollback {
   background: transparent;
-  color: var(--accent-red);
-  border: 1px solid var(--accent-red);
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
   padding: 4px 12px;
-  border-radius: var(--radius);
+  border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   font-weight: 500;
@@ -230,8 +200,7 @@ pre {
 }
 
 .btn-rollback:hover {
-  background: var(--accent-red);
-  color: white;
+  background: var(--accent-blue-subtle);
 }
 
 /* File Tabs */
@@ -259,11 +228,11 @@ pre {
 }
 
 .file-tab:hover {
-  background: var(--bg-hover);
+  background: var(--bg-elevated);
 }
 
 .file-tab.active {
-  color: var(--text-bright);
+  color: var(--text-primary);
   background: var(--bg-primary);
   border-top-color: var(--accent-blue);
 }
@@ -278,9 +247,10 @@ pre {
 .file-type-badge {
   font-size: 12px;
   padding: 1px 4px;
-  border-radius: 2px;
-  background: var(--bg-tertiary);
+  border-radius: 4px;
+  background: transparent;
   color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
 /* Tab Content - Before/After Panels */
@@ -399,13 +369,13 @@ pre {
 .form-row input,
 .form-row select,
 .form-row textarea {
-  background: var(--bg-tertiary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12px;
   padding: 6px 8px;
-  border-radius: var(--radius);
+  border-radius: 4px;
   width: 100%;
   transition: border-color 0.2s;
 }
@@ -413,7 +383,7 @@ pre {
 .form-row input:focus,
 .form-row select:focus,
 .form-row textarea:focus {
-  border-color: var(--border-focus);
+  border-color: var(--accent-blue);
   outline: none;
 }
 
@@ -430,16 +400,17 @@ pre {
   color: var(--text-secondary);
   font-family: var(--font-mono);
   padding: 8px;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  border: 1px solid var(--border);
 }
 
 .run-button {
-  background: var(--accent-blue);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px solid var(--accent-blue);
   padding: 8px 16px;
-  border-radius: var(--radius);
+  border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   font-weight: 500;
@@ -447,7 +418,7 @@ pre {
 }
 
 .run-button:hover:not(:disabled) {
-  background: #005a9e;
+  background: var(--accent-blue-subtle);
 }
 
 .run-button:disabled {
@@ -485,7 +456,7 @@ pre {
 .step-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 4px;
   padding: 12px;
   width: 100%;
   position: relative;
@@ -514,12 +485,12 @@ pre {
 }
 
 .status-icon.success {
-  background: var(--success);
+  background: #42be65;
   color: white;
 }
 
 .status-icon.error {
-  background: var(--error);
+  background: #fa4d56;
   color: white;
 }
 
@@ -546,7 +517,7 @@ pre {
 .step-title {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-bright);
+  color: var(--text-primary);
   text-transform: capitalize;
   flex: 1;
 }
@@ -583,7 +554,7 @@ pre {
 .output-content {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 4px;
   padding: 8px;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -621,18 +592,18 @@ pre {
 }
 
 .response-status.status-2xx {
-  color: var(--success);
+  color: #42be65;
 }
 
 .response-status.status-4xx,
 .response-status.status-5xx {
-  color: var(--error);
+  color: #fa4d56;
 }
 
 .response-body {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 4px;
   padding: 12px;
 }
 
@@ -646,11 +617,11 @@ pre {
 /* Error Banner */
 .error-banner {
   background: rgba(244, 71, 71, 0.15);
-  border: 1px solid var(--error);
-  border-radius: var(--radius);
+  border: 1px solid #fa4d56;
+  border-radius: 4px;
   padding: 12px;
   margin: 16px;
-  color: var(--error);
+  color: #fa4d56;
   font-size: 12px;
 }
 
