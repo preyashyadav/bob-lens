@@ -9,7 +9,7 @@ Support two commands:
 bob-lens init
 Does the following in order:
 
-Detect workspace path — process.cwd()
+Detect works![alt text](image.png)pace path — process.cwd()
 Detect bob binary path:
 
 javascriptimport { execSync } from 'node:child_process';
