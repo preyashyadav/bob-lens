@@ -1,4 +1,4 @@
-<img src="docs/bob-lens-logo.png" height="20" style="vertical-align:middle"/> **Bob Lens**
+<img src="docs/screenshots/bob-lens-logo.png" height="20" style="vertical-align:middle"/> **Bob Lens**
 > Visual Change Intelligence for IBM Bob — see what AI changed, understand it, approve it.
 
 ![IBM Bob Hackathon 2026](https://img.shields.io/badge/IBM%20Bob%20Hackathon-2026-7aabff?style=flat-square) ![npm](https://img.shields.io/badge/npm-global%20install-171717?style=flat-square) ![Node](https://img.shields.io/badge/node-%3E%3D18-42be65?style=flat-square) ![License](https://img.shields.io/badge/license-MIT-697077?style=flat-square)
@@ -12,16 +12,27 @@ Bob Lens is an npm package that runs alongside IBM Bob IDE. It visualizes AI-gen
 
 ## Installation
 
-### Option 1 — Global install from GitHub (recommended)
+### Option 1 — Global install from npm (recommended)
 ```bash
-npm install -g https://github.com/preyashyadav/bob-lens
+npm install -g bob-lens
 ```
 
-### Option 2 — From source
+### Option 2 — Global install from GitHub (pre-release)
+```bash
+npm install -g github:preyashyadav/bob-lens
+```
+
+### Option 3 — From source (development)
 ```bash
 git clone https://github.com/preyashyadav/bob-lens
 cd bob-lens
-npm run install:all
+npm install
+
+# If you edit UI/server code, rebuild dist outputs:
+(cd mcp-server && npm install && npm run build)
+(cd sandbox && npm install && npm run build)
+(cd ui && npm install && npm run build)
+
 npm link
 ```
 
